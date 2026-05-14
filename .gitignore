@@ -2,9 +2,8 @@
 __pycache__/
 *.py[cod]
 *.pyo
-.env
-venv/
 .venv/
+venv/
 
 # Streamlit
 .streamlit/
@@ -22,3 +21,32 @@ Thumbs.db
 
 # Runtime artifacts
 *.log
+
+# ─── ASPEN: Dados reais (nunca versionar) ───────────────────
+*.xlsx
+*.db
+*.db-shm
+*.db-wal
+
+# ─── ASPEN: Backups e temporários ───────────────────────────
+*.bak
+*.bak_*
+*.old
+*.tmp
+*.csv
+
+# ─── ASPEN: Ambiente ────────────────────────────────────────
+.env
+.env.local
+.env.production
+
+# ─── ASPEN: Pastas a não versionar ──────────────────────────
+scratch/
+archive/
+locadora-dashboard/
+
+# ─── IDEs ───────────────────────────────────────────────────
+.idea/
+.vscode/
+*.suo
+*.user
