@@ -4,6 +4,20 @@ from typing import Optional, Literal, Union, Any
 
 
 # ─────────────────────────────────────────────
+# EMPRESA
+# ─────────────────────────────────────────────
+class EmpresaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id:        int
+    nome:      str
+    cnpj_cpf:  Optional[str] = None
+    municipio: Optional[str] = None
+    estado:    Optional[str] = None
+    sigla:     Optional[str] = None
+
+
+# ─────────────────────────────────────────────
 # PARCELAS
 # ─────────────────────────────────────────────
 class ParcelaCreate(BaseModel):
@@ -319,7 +333,7 @@ class NfItemResponse(NfItemBase):
 class NotaFiscalCreate(BaseModel):
     numero_nf:        Optional[str]  = None
     tipo_nf:          Literal["Produto", "Servico"]
-    empresa_faturada: Optional[str]  = None
+    id_empresa:       Optional[int]  = None
     fornecedor:       Optional[str]  = None
     valor_total_nf:   Optional[float] = None
     data_emissao:     Optional[date] = None
@@ -332,7 +346,7 @@ class NotaFiscalCreate(BaseModel):
 class NotaFiscalUpdate(BaseModel):
     numero_nf:        Optional[str]  = None
     tipo_nf:          Optional[Literal["Produto", "Servico"]] = None
-    empresa_faturada: Optional[str]  = None
+    id_empresa:       Optional[int]  = None
     fornecedor:       Optional[str]  = None
     valor_total_nf:   Optional[float] = None
     data_emissao:     Optional[date] = None
@@ -347,7 +361,7 @@ class NotaFiscalResponse(BaseModel):
     os_id:            int
     numero_nf:        Optional[str]
     tipo_nf:          str
-    empresa_faturada: Optional[str]
+    id_empresa:       Optional[int]  = None
     fornecedor:       Optional[str]
     valor_total_nf:   Optional[float]
     data_emissao:     Optional[date]
@@ -430,6 +444,7 @@ class OsResponse(BaseModel):
     fornecedor:      Optional[str]
     tipo_manutencao: Optional[str]
     categoria:       Optional[str]
+    sistema:         Optional[str]
     total_os:        Optional[float]
     responsavel_tec: Optional[str]
     indisponivel:    Optional[bool]
@@ -468,3 +483,123 @@ class MergeRequest(BaseModel):
 class IntegridadeResponse(BaseModel):
     orfas: list[int]
     total: int
+
+
+# ─────────────────────────────────────────────
+# REEMBOLSOS
+# ─────────────────────────────────────────────
+TIPOS_REEMBOLSO = (
+    "Manutenção",
+    "Multa de Trânsito",
+    "Franquia de Seguro",
+    "Transporte",
+    "Encargo",
+    "Outro",
+)
+
+STATUS_RECEBIMENTO = ("Recebido", "Vencido", "Pendente", "Cancelado")
+
+
+class ReembolsoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id:                  int
+    id_reembolso_excel:  Optional[int]   = None
+    tipo:                Optional[str]   = None
+    id_empresa:          Optional[int]   = None
+    empresa_emissora:    Optional[str]   = None   # sigla: TKJ / LANDKRAFT / FINITA
+    id_contrato:         Optional[int]   = None
+    id_cliente:          Optional[int]   = None
+    id_veiculo:          Optional[int]   = None
+    recibo:              Optional[str]   = None
+    emissao:             Optional[date]  = None
+    vencimento:          Optional[date]  = None
+    empresa:             Optional[str]   = None
+    valor_reembolso:     Optional[float] = None
+    data_entrada:        Optional[date]  = None
+    data_recebimento:    Optional[date]  = None
+    valor_recebido:      Optional[float] = None
+    encargos:            Optional[float] = None
+    saldo:               Optional[float] = None   # valor_reembolso - valor_recebido
+    forma_recebimento:   Optional[str]   = None
+    status_recebimento:  Optional[str]   = None
+    descricao:           Optional[str]   = None
+    documento_rede:      Optional[str]   = None
+    numero_os:           Optional[str]   = None
+    fatura_mes:          Optional[str]   = None
+    placas_json:         Optional[str]   = None
+    placa:               Optional[str]   = None
+    modelo:              Optional[str]   = None
+
+
+class ReembolsoCreate(BaseModel):
+    tipo:               str
+    id_empresa:         Optional[int]   = None
+    id_contrato:        Optional[int]   = None
+    id_veiculo:         Optional[int]   = None
+    placas_json:        Optional[str]   = None
+    fatura_mes:         Optional[str]   = None
+    numero_os:          Optional[str]   = None
+    emissao:            date
+    vencimento:         Optional[date]  = None
+    valor_reembolso:    float
+    valor_recebido:     Optional[float] = None
+    empresa:            Optional[str]   = None
+    recibo:             Optional[str]   = None
+    forma_recebimento:  Optional[str]   = None
+    status_recebimento: str             = "Pendente"
+    descricao:          Optional[str]   = None
+
+
+class ReembolsoUpdate(BaseModel):
+    tipo:               Optional[str]   = None
+    id_empresa:         Optional[int]   = None
+    id_contrato:        Optional[int]   = None
+    recibo:             Optional[str]   = None
+    emissao:            Optional[date]  = None
+    vencimento:         Optional[date]  = None
+    valor_reembolso:    Optional[float] = None
+    valor_recebido:     Optional[float] = None
+    empresa:            Optional[str]   = None
+    forma_recebimento:  Optional[str]   = None
+    status_recebimento: Optional[str]   = None
+    descricao:          Optional[str]   = None
+
+
+class ReembolsoPagar(BaseModel):
+    valor_recebido:   float
+    data_recebimento: date
+    forma_recebimento: Optional[str] = None
+
+
+class ReembolsoMensal(BaseModel):
+    mes:      int
+    valor:    float
+    recebido: float = 0.0
+
+
+class ReembolsoPorVeiculo(BaseModel):
+    placa:      Optional[str] = None
+    modelo:     Optional[str] = None
+    total:      float
+    recebido:   float = 0.0
+    quantidade: int
+
+
+class ReembolsoPorTipo(BaseModel):
+    tipo:       str
+    total:      float
+    quantidade: int
+    recebido:   float
+
+
+class ReembolsoSummary(BaseModel):
+    total_ano:      float
+    total_mes:      float
+    total_recebido: float
+    quantidade:     int
+    pendentes:      int
+    valor_pendente: float
+    por_mes:        list[ReembolsoMensal]
+    por_veiculo:    list[ReembolsoPorVeiculo]
+    por_tipo:       list[ReembolsoPorTipo]

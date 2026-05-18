@@ -1,4 +1,4 @@
-import { LayoutDashboard, Truck, Wrench, ChevronDown, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Truck, Wrench, BarChart2, Banknote, ChevronDown, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
 const LEGENDS = {
@@ -26,12 +26,20 @@ const LEGENDS = {
     { color: '#22c55e', label: 'Preventiva' },
     { color: '#ef4444', label: 'Corretiva' },
   ],
+  analysis: [
+    { color: '#f59e0b', label: 'Pneu' },
+    { color: '#6366f1', label: 'Freio' },
+    { color: '#22c55e', label: 'Revisão' },
+    { color: '#f97316', label: 'Implemento' },
+  ],
 }
 
 const NAV = [
   { key: 'overview',     label: 'Visão Geral',  icon: LayoutDashboard },
   { key: 'vehicles',     label: 'Frota',        icon: Truck },
   { key: 'maintenance',  label: 'Manutenção',   icon: Wrench },
+  { key: 'analysis',     label: 'Intervalos',   icon: BarChart2 },
+  { key: 'reembolsos',   label: 'Reembolsos',   icon: Banknote },
 ]
 
 export default function Sidebar({ page, setPage, years, year, setYear, isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) {
@@ -73,21 +81,24 @@ export default function Sidebar({ page, setPage, years, year, setYear, isCollaps
           </div>
 
         {!isCollapsed ? (
-          <div className="flex flex-col items-center px-1">
-            <div className="bg-white rounded-2xl p-2 shadow-sm mb-2 w-full flex justify-center">
+          <div className="flex flex-col items-center px-2">
+            <div className="py-2 mb-1 w-full flex justify-center">
               <img
                 src="/logo.png"
-                alt="TKJ Gerenciamento"
-                className="h-24 w-auto object-contain"
+                alt="Aspen"
+                className="h-16 w-auto object-contain"
               />
             </div>
-            <p className="text-g-700 text-[10px] uppercase tracking-widest font-bold text-center">
-              Painel de Gestão
+            <p className="text-g-600 text-[10px] uppercase tracking-widest font-semibold text-center">
+              Gestão Operacional
             </p>
           </div>
         ) : (
-          <div className="mt-2 flex flex-col items-center gap-1 opacity-50">
-            <img src="/icon.png" alt="" className="w-6 h-6 object-contain" />
+          <div className="mt-2 flex flex-col items-center gap-1">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm"
+              style={{ background: 'rgb(var(--g-100) / 0.12)', color: 'rgb(var(--g-100))' }}>
+              A
+            </div>
           </div>
         )}
       </div>
@@ -130,6 +141,7 @@ export default function Sidebar({ page, setPage, years, year, setYear, isCollaps
           )}
         </div>
       </div>
+
 
       {/* Navigation */}
       <nav className={`px-3 pt-2 flex flex-col gap-0.5 ${isCollapsed ? 'items-center' : ''}`}>

@@ -12,7 +12,7 @@ const TOOLTIP_STYLE = {
   boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
 }
 
-const AXIS_TICK = { fill: '#52525b', fontSize: 10 }
+const AXIS_TICK = { fill: '#64748b', fontSize: 10 }
 
 const TooltipContent = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null

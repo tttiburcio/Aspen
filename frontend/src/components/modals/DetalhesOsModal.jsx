@@ -1,18 +1,8 @@
 import { createPortal } from 'react-dom'
 import { X, Wrench, FileText, CreditCard, Package, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
-import { brl, dateBR, num } from '../utils/format'
-
-// ── helpers ──────────────────────────────────────────────────────────────
-const EMPRESA_NOME_MAP = {
-  'TKJ': 'TKJ', 'FINITA': 'FINITA', 'LANDKRAFT': 'LANDKRAFT',
-  '1': 'TKJ', '2': 'FINITA', '3': 'LANDKRAFT',
-}
-function resolveEmpresa(cod) {
-  if (!cod) return '—'
-  const k = String(cod).toUpperCase().trim()
-  return EMPRESA_NOME_MAP[k] || EMPRESA_NOME_MAP[String(parseInt(cod))] || k
-}
+import { brl, dateBR, num } from '../../utils/format'
+import { useCompanies } from '../../contexts/CompanyContext'
 
 function diasParados(d1, d2 = null) {
   const a = new Date(d1)
@@ -63,7 +53,8 @@ function ParcelaBadge({ status }) {
 
 function NfCard({ nf, index, itemLookup }) {
   const [open, setOpen] = useState(true)
-  const empresa = resolveEmpresa(nf.empresa_faturada)
+  const { resolveNome } = useCompanies()
+  const empresa = resolveNome(nf.id_empresa)
   const parcelasOrdenadas = [...(nf.parcelas || [])].sort((a, b) => (a.data_vencimento || '9999-99-99').localeCompare(b.data_vencimento || '9999-99-99'))
   const totalParcelas = parcelasOrdenadas.length
   const pagas = parcelasOrdenadas.filter(p => p.status_pagamento === 'Pago').length
@@ -184,6 +175,7 @@ function NfCard({ nf, index, itemLookup }) {
 // ── modal principal ───────────────────────────────────────────────────────
 export default function DetalhesOsModal({ manutencao: os, onClose, onDeleted }) {
   const isFin = os.status_os === 'finalizada'
+  const { resolveNome } = useCompanies()
   // Só contar dias se veículo estava indisponível
   const dias = (os.indisponivel && os.data_entrada)
     ? diasParados(os.data_entrada, isFin && os.data_execucao ? os.data_execucao : null)
@@ -314,7 +306,7 @@ export default function DetalhesOsModal({ manutencao: os, onClose, onDeleted }) 
                 <div className="flex flex-col gap-0.5">
                   <p className="text-g-500 text-[10px] uppercase tracking-widest font-semibold">Empresas Faturadas</p>
                   <p className="text-g-200 text-[15px] font-medium">
-                    {[...new Set(os.notas_fiscais.map(nf => resolveEmpresa(nf.empresa_faturada)).filter(e => e && e !== '—'))].join(' · ') || '—'}
+                    {[...new Set(os.notas_fiscais.map(nf => resolveNome(nf.id_empresa)).filter(e => e && e !== '—'))].join(' · ') || '—'}
                   </p>
                 </div>
               )}

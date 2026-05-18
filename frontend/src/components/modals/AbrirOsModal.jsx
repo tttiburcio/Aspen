@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import toast from 'react-hot-toast'
 import { X, Loader2, Wrench, Plus, Trash2 } from 'lucide-react'
-import { dbListFrota, dbAbrirOs, dbAtualizarOs, dbPneuSpecs } from '../utils/api'
+import { dbListFrota, dbAbrirOs, dbAtualizarOs, dbPneuSpecs } from '../../utils/api'
 
 const TIPOS       = ['Preventiva', 'Corretiva']
 const CATEGORIAS  = ['Serviço', 'Compra']
@@ -183,9 +184,11 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
         })),
       }
       isEdit ? await dbAtualizarOs(os.id, payload) : await dbAbrirOs(payload)
+      toast.success(isEdit ? 'OS atualizada com sucesso!' : 'OS aberta com sucesso!')
       onSaved()
     } catch (err) {
       setError(err.response?.data?.detail || 'Erro ao salvar')
+      toast.error('Erro ao salvar OS')
     } finally {
       setSaving(false)
     }

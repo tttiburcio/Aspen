@@ -36,7 +36,7 @@ const TooltipContent = ({ active, payload, label }) => {
   )
 }
 
-const AXIS_TICK = { fill: '#52525b', fontSize: 11 }
+const AXIS_TICK = { fill: '#64748b', fontSize: 11 }
 
 export function MonthlyRevenueChart({ data }) {
   return (

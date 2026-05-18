@@ -17,14 +17,30 @@ api.interceptors.response.use(
 )
 
 export const getYears              = ()                    => api.get('/years').then(r => r.data)
-export const getKpis               = (year)                => api.get('/kpis',     { params: { year } }).then(r => r.data)
-export const getMonthly            = (year)                => api.get('/monthly',  { params: { year } }).then(r => r.data)
-export const getVehicles           = (year, region)        => api.get('/vehicles', { params: { year, ...(region ? { region } : {}) } }).then(r => r.data)
+export const getKpis               = (year, empresa)       => api.get('/kpis',     { params: { year, ...(empresa ? { empresa } : {}) } }).then(r => r.data)
+export const getMonthly            = (year, empresa)       => api.get('/monthly',  { params: { year, ...(empresa ? { empresa } : {}) } }).then(r => r.data)
+export const getVehicles           = (year, region, empresa) => api.get('/vehicles', { params: { year, ...(region ? { region } : {}), ...(empresa ? { empresa } : {}) } }).then(r => r.data)
 export const getVehicle            = (placa, year)         => api.get(`/vehicle/${encodeURIComponent(placa)}`, { params: { year } }).then(r => r.data)
 export const getRegions            = (year)                => api.get('/regions',  { params: { year } }).then(r => r.data)
 export const getMaintenanceAnalysis = (year, placa)        => api.get('/maintenance_analysis', { params: { year, ...(placa ? { placa } : {}) } }).then(r => r.data)
-export const getImplementoAnalysis  = (year)               => api.get('/maintenance_analysis/implemento', { params: { year } }).then(r => r.data)
+export const getImplementoAnalysis  = (year, empresa)      => api.get('/maintenance_analysis/implemento', { params: { year, ...(empresa ? { empresa } : {}) } }).then(r => r.data)
 export const getIntervalosAnalysis  = (sistema)            => api.get('/maintenance_analysis/intervalos', { params: { sistema } }).then(r => r.data)
+export const getCompanies           = ()                    => api.get('/companies').then(r => r.data)
+
+// ── Reembolsos ───────────────────────────────────────────────────────
+export const getReembolsos          = (params = {})         => api.get('/db/reembolsos', { params }).then(r => r.data)
+export const getReembolsosSummary   = (params = {})         => api.get('/db/reembolsos/summary', { params }).then(r => r.data)
+export const getProximoRecibo       = (empresa_id)          => api.get('/db/reembolsos/proximo-recibo', { params: { empresa_id } }).then(r => r.data)
+export const criarReembolso         = (payload)             => api.post('/db/reembolsos', payload).then(r => r.data)
+export const atualizarReembolso     = (id, payload)         => api.patch(`/db/reembolsos/${id}`, payload).then(r => r.data)
+export const deletarReembolso       = (id)                  => api.delete(`/db/reembolsos/${id}`)
+export const pagarReembolso         = (id, payload)         => api.post(`/db/reembolsos/${id}/pagar`, payload).then(r => r.data)
+
+// ── Contratos ─────────────────────────────────────────────────────────
+export const getContratos           = (params = {})         => api.get('/db/contratos', { params }).then(r => r.data)
+export const getContratoVeiculos    = (id)                  => api.get(`/db/contratos/${id}/veiculos`).then(r => r.data)
+export const getContratoFaturas     = (id)                  => api.get(`/db/contratos/${id}/faturas`).then(r => r.data)
+export const getClientes            = ()                    => api.get('/db/clientes').then(r => r.data)
 
 // ── Banco SQLite — CRUD legado (manutenções) ─────────────────────────
 export const dbListFrota           = ()                    => api.get('/db/frota').then(r => r.data)
@@ -36,10 +52,10 @@ export const dbAtualizarManutencao = (id, payload)         => api.patch(`/db/man
 export const dbFinalizarManutencao = (id, payload)         => api.post(`/db/manutencoes/${id}/finalizar`, payload).then(r => r.data)
 export const dbDeletarManutencao   = (id)                  => api.delete(`/db/manutencoes/${id}`)
 export const dbAtualizarParcela    = (id, payload)         => api.patch(`/db/parcelas/${id}`, payload).then(r => r.data)
-export const dbListParcelas        = (year)                => api.get('/db/parcelas', { params: { ...(year ? { year } : {}) } }).then(r => r.data)
+export const dbListParcelas        = (year, empresa)       => api.get('/db/parcelas', { params: { ...(year ? { year } : {}), ...(empresa ? { empresa } : {}) } }).then(r => r.data)
 
 // ── Ordens de Serviço (novo modelo) ─────────────────────────────────
-export const dbListOs              = (status, placa)       => api.get('/db/os', { params: { ...(status ? { status } : {}), ...(placa ? { placa } : {}) } }).then(r => r.data)
+export const dbListOs              = (status, placa, empresa) => api.get('/db/os', { params: { ...(status ? { status } : {}), ...(placa ? { placa } : {}), ...(empresa ? { empresa } : {}) } }).then(r => r.data)
 export const dbGetOs               = (id)                  => api.get(`/db/os/${id}`).then(r => r.data)
 export const dbAbrirOs             = (payload)             => api.post('/db/os', payload).then(r => r.data)
 export const dbAtualizarOs         = (id, payload)         => api.patch(`/db/os/${id}`, payload).then(r => r.data)

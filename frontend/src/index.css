@@ -2,45 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Light theme (default) — white with #005743 accent ───────────── */
+/* ── Light theme (default) — branco / slate, accent verde Aspen ── */
 :root,
 [data-theme="light"] {
-  /* Backgrounds — do mais claro ao mais escuro */
-  --g-950: 249 250 251;    /* #f9fafb — fundo da página */
-  --g-900: 255 255 255;    /* #ffffff — cards, sidebar */
-  --g-850: 243 244 246;    /* #f3f4f6 — hover */
-  --g-800: 229 231 235;    /* #e5e7eb — bordas */
-  --g-750: 209 213 219;    /* #d1d5db — bordas fortes */
-  --g-700: 156 163 175;    /* #9ca3af — texto muito apagado */
-  --g-600: 107 114 128;    /* #6b7280 — texto secundário */
-  --g-500: 75 85 99;       /* #4b5563 — texto corpo */
-  --g-400: 55 65 81;       /* #374151 — texto primário */
-  --g-300: 31 41 55;       /* #1f2937 — texto forte */
-  --g-200: 17 24 39;       /* #111827 — headings */
-  --g-100: 0 87 67;        /* #005743 — verde acento TKJ */
-  --g-50:  0 55 42;        /* #00372a — verde escuro */
+  --g-950: 248 250 252;    /* #f8fafc — fundo da página */
+  --g-900: 255 255 255;    /* #ffffff — cards, modais */
+  --g-850: 241 245 249;    /* #f1f5f9 — hover / bg alternativo */
+  --g-800: 226 232 240;    /* #e2e8f0 — bordas */
+  --g-750: 203 213 225;    /* #cbd5e1 — bordas fortes */
+  --g-700: 148 163 184;    /* #94a3b8 — texto muito apagado */
+  --g-600: 100 116 139;    /* #64748b — texto secundário */
+  --g-500: 71 85 105;      /* #475569 — texto corpo */
+  --g-400: 51 65 85;       /* #334155 — texto primário */
+  --g-300: 30 41 59;       /* #1e293b — texto forte */
+  --g-200: 15 23 42;       /* #0f172a — headings */
+  --g-100: 0 42 28;        /* #002a1c — Verde Aspen escuro */
+  --g-50:  0 22 15;        /* #00160f — verde mais escuro (hover) */
 
   color-scheme: light;
 }
 
-/* ── Dark theme ───────────────────────────────────────────────────── */
+/* ── Dark theme — Azul Noite + Verde Aspen ────────────────────── */
 [data-theme="dark"] {
-  --g-950: 3 26 14;
-  --g-900: 5 43 23;
-  --g-850: 8 53 32;
-  --g-800: 15 74 44;
-  --g-750: 22 92 56;
-  --g-700: 30 116 71;
-  --g-600: 47 158 101;
-  --g-500: 69 196 126;
-  --g-400: 114 212 154;
-  --g-300: 162 228 188;
-  --g-200: 200 240 216;
-  --g-100: 224 248 235;
-  --g-50:  240 253 244;
+  --g-950: 11 19 43;       /* #0B132B — Azul Noite */
+  --g-900: 14 24 52;       /* #0e1834 — fundo secundário */
+  --g-850: 30 41 59;       /* #1E293B — Azul Aço / cards */
+  --g-800: 30 51 80;       /* #1e3350 — bordas */
+  --g-750: 45 70 108;      /* #2d466c — bordas fortes */
+  --g-700: 71 100 148;     /* #476494 — muted */
+  --g-600: 100 116 139;    /* #64748b — texto apagado */
+  --g-500: 148 163 184;    /* #94a3b8 — texto corpo */
+  --g-400: 203 213 225;    /* #cbd5e1 — texto secundário */
+  --g-300: 226 232 240;    /* #e2e8f0 — texto primário */
+  --g-200: 241 245 249;    /* #f1f5f9 — headings */
+  --g-100: 34 197 94;      /* #22C55E — Verde Aspen */
+  --g-50:  134 239 172;    /* #86EFAC — Verde Claro */
 
   color-scheme: dark;
 }
+
 
 @layer base {
   * { box-sizing: border-box; }
@@ -53,8 +53,8 @@
 
   body {
     background-color: rgb(var(--g-950));
-    color: rgb(var(--g-200));
-    font-family: 'Inter', system-ui, sans-serif;
+    color: rgb(var(--g-300));
+    font-family: 'Sora', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
@@ -75,7 +75,7 @@
   }
 
   .badge-green {
-    @apply bg-g-850 text-g-100 border border-g-800 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium px-2 py-0.5 rounded-full;
   }
 
   .badge-red {
@@ -112,12 +112,12 @@
 
   .nav-item-active {
     @apply text-g-100 border;
-    background-color: rgb(0 87 67 / 0.08);
-    border-color: rgb(0 87 67 / 0.2);
+    background-color: rgb(var(--g-100) / 0.1);
+    border-color: rgb(var(--g-100) / 0.25);
   }
 
   .nav-item-inactive {
-    @apply text-g-600 hover:text-g-300 hover:bg-g-850;
+    @apply text-g-500 hover:text-g-200 hover:bg-g-850;
   }
 
   .stagger-child {
@@ -126,9 +126,9 @@
   }
 }
 
-/* ── Dark mode overrides ──────────────────────────────────────────── */
+/* ── Dark mode overrides ──────────────────────────────────────── */
 [data-theme="dark"] body {
-  color: rgb(var(--g-50));
+  color: rgb(var(--g-200));
 }
 
 [data-theme="dark"] .card {
@@ -140,7 +140,7 @@
 }
 
 [data-theme="dark"] .badge-green {
-  @apply bg-g-800 text-g-50 border-g-600;
+  @apply bg-emerald-950/60 text-emerald-300 border-emerald-800/60;
 }
 
 [data-theme="dark"] .badge-red {
@@ -151,47 +151,47 @@
   @apply bg-amber-950/60 text-amber-300 border-amber-800/60;
 }
 
-[data-theme="dark"] .value-pos     { @apply text-g-50; }
+[data-theme="dark"] .value-pos     { @apply text-g-200; }
 [data-theme="dark"] .value-neg     { @apply text-red-400; }
-[data-theme="dark"] .value-neutral { @apply text-g-200; }
+[data-theme="dark"] .value-neutral { @apply text-g-300; }
 
 [data-theme="dark"] .table-row {
-  @apply border-g-900 hover:bg-g-850/70;
+  @apply border-g-800 hover:bg-g-850/70;
 }
 
 [data-theme="dark"] .th     { @apply text-g-500; }
-[data-theme="dark"] .td     { @apply text-g-200; }
+[data-theme="dark"] .td     { @apply text-g-300; }
 
 [data-theme="dark"] .nav-item-active {
-  @apply bg-g-700/25 text-g-50 border-g-600/40 shadow-sm;
-  background-color: unset;
-  border-color: unset;
+  @apply text-g-100 border shadow-sm;
+  background-color: rgb(var(--g-100) / 0.12);
+  border-color: rgb(var(--g-100) / 0.28);
 }
 
 [data-theme="dark"] .nav-item-inactive {
-  @apply text-g-500 hover:text-g-200 hover:bg-g-800/60;
+  @apply text-g-500 hover:text-g-200 hover:bg-g-850/60;
 }
 
-/* ── Light mode: sidebar border ───────────────────────────────────── */
-[data-theme="light"] aside {
-  border-right-color: #e5e7eb !important;
-  background-color: #ffffff !important;
-}
-
-/* ── Light mode: card shadow ──────────────────────────────────────── */
+/* ── Light mode card shadow ───────────────────────────────────── */
 [data-theme="light"] .card {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
 }
 
-/* ── Light mode: KPICard icon bg ──────────────────────────────────── */
-[data-theme="light"] .kpi-icon-bg {
-  background-color: rgb(0 87 67 / 0.08) !important;
+/* ── Light mode: sidebar borda visível ───────────────────────── */
+[data-theme="light"] aside {
+  background-color: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
 }
 
-/* ── Recharts overrides ───────────────────────────────────────────── */
+/* ── KPI icon background ──────────────────────────────────────── */
+.kpi-icon-bg {
+  background-color: rgb(var(--g-100) / 0.1);
+}
+
+/* ── Recharts overrides ───────────────────────────────────────── */
 .recharts-tooltip-wrapper { outline: none !important; }
 
-/* ── Skeleton shimmer ─────────────────────────────────────────────── */
+/* ── Skeleton shimmer ─────────────────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -203,14 +203,14 @@
 }
 
 [data-theme="light"] .skeleton {
-  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   border-radius: 4px;
 }
 
 [data-theme="dark"] .skeleton {
-  background: linear-gradient(90deg, rgb(var(--g-800)) 25%, rgb(var(--g-700)) 50%, rgb(var(--g-800)) 75%);
+  background: linear-gradient(90deg, rgb(30 41 59) 25%, rgb(30 51 80) 50%, rgb(30 41 59) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   border-radius: 4px;
@@ -220,7 +220,7 @@
   border-radius: 4px;
 }
 
-/* ── Print Styles ─────────────────────────────────────────────────── */
+/* ── Print Styles ─────────────────────────────────────────────── */
 @media print {
   @page {
     size: A4 landscape;
@@ -233,13 +233,12 @@
     font-size: 10pt;
   }
 
-  /* Force light theme colors for printing */
   :root {
     --g-950: 255 255 255;
     --g-900: 255 255 255;
-    --g-850: 243 244 246;
-    --g-800: 229 231 235;
-    --g-100: 0 87 67;
+    --g-850: 241 245 249;
+    --g-800: 226 232 240;
+    --g-100: 34 197 94;
     --g-200: 0 0 0;
   }
 
@@ -269,7 +268,6 @@
     margin-bottom: 10px !important;
   }
 
-  /* Tables */
   .th {
     background-color: #f9fafb !important;
     color: #374151 !important;
@@ -280,17 +278,14 @@
     border-bottom: 1px solid #f3f4f6 !important;
   }
 
-  /* Expand hidden content if needed or ensure all content is visible */
   .overflow-y-auto, .overflow-x-auto {
     overflow: visible !important;
   }
 
-  /* Specific fixes for financial report */
   .grid {
     display: grid !important;
   }
 
-  /* Ensure colors are printed */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

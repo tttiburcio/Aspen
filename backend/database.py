@@ -37,7 +37,6 @@ def _migrate_add_columns():
         ("os_itens",       "categoria",          "VARCHAR(30)"),
         ("ordens_servico", "status_execucao",     "VARCHAR(40)"),
         ("ordens_servico", "descricao_pendente",  "TEXT"),
-        ("notas_fiscais",  "empresa_faturada",    "VARCHAR(100)"),
     ]
     with engine.connect() as conn:
         for table, column, col_type in migrations:

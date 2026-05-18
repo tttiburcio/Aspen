@@ -7,6 +7,22 @@ from database import Base
 
 
 # ─────────────────────────────────────────────
+# EMPRESA
+# ─────────────────────────────────────────────
+class Empresa(Base):
+    __tablename__ = "empresas"
+
+    id        = Column(Integer, primary_key=True, autoincrement=True)
+    nome      = Column(String(200), nullable=False)
+    sigla     = Column(String(20))
+    cnpj_cpf  = Column(String(30))
+    municipio = Column(String(100))
+    estado    = Column(String(10))
+    criado_em = Column(DateTime, server_default=func.now())
+
+
+
+# ─────────────────────────────────────────────
 # FROTA
 # ─────────────────────────────────────────────
 class Frota(Base):
@@ -14,7 +30,8 @@ class Frota(Base):
 
     id          = Column(Integer, primary_key=True)   # IDVeiculo original
     placa       = Column(String(20), unique=True, nullable=False)
-    empresa     = Column(String(100))
+    id_empresa  = Column(Integer, ForeignKey("empresas.id"))
+    empresa     = Column(String(100))   # deprecated: usar id_empresa
     marca       = Column(String(80))
     modelo      = Column(String(100))
     status      = Column(String(50))
@@ -41,7 +58,8 @@ class Manutencao(Base):
     id_veiculo  = Column(Integer, ForeignKey("frota.id"), nullable=False)
     placa       = Column(String(20))
     modelo      = Column(String(100))
-    empresa     = Column(String(100))
+    id_empresa  = Column(Integer, ForeignKey("empresas.id"))
+    empresa     = Column(String(100))   # deprecated: usar id_empresa
     id_contrato = Column(String(50))
     implemento  = Column(String(80))
 
@@ -145,6 +163,59 @@ class ManutencaoParcela(Base):
 
 
 # ─────────────────────────────────────────────
+# CLIENTE
+# ─────────────────────────────────────────────
+class Cliente(Base):
+    __tablename__ = "clientes"
+
+    id             = Column(Integer, primary_key=True)
+    nome           = Column(String(200), nullable=False)
+    cnpj_cpf       = Column(String(30))
+    municipio      = Column(String(100))
+    estado         = Column(String(10))
+    status_cliente = Column(String(30))
+    criado_em      = Column(DateTime, server_default=func.now())
+
+
+# ─────────────────────────────────────────────
+# CONTRATO
+# ─────────────────────────────────────────────
+class Contrato(Base):
+    __tablename__ = "contratos"
+
+    id                 = Column(Integer, primary_key=True)
+    empresa_id         = Column(Integer)
+    cliente_id         = Column(Integer, ForeignKey("clientes.id"))
+    nome_cliente       = Column(String(200))
+    cidade_operacao    = Column(String(100))
+    estado_operacao    = Column(String(10))
+    data_inicio        = Column(Date)
+    data_fim           = Column(Date)
+    data_encerramento  = Column(Date)
+    status_contrato    = Column(String(30))
+    criado_em          = Column(DateTime, server_default=func.now())
+
+    cliente   = relationship("Cliente")
+    veiculos  = relationship("ContratoVeiculo", back_populates="contrato")
+
+
+# ─────────────────────────────────────────────
+# CONTRATO_VEICULO (vínculo N:N)
+# ─────────────────────────────────────────────
+class ContratoVeiculo(Base):
+    __tablename__ = "contrato_veiculo"
+
+    id          = Column(Integer, primary_key=True)
+    contrato_id = Column(Integer, ForeignKey("contratos.id"), nullable=False)
+    id_veiculo  = Column(Integer, ForeignKey("frota.id"),     nullable=False)
+    sequencia   = Column(Integer)
+    criado_em   = Column(DateTime, server_default=func.now())
+
+    contrato = relationship("Contrato", back_populates="veiculos")
+    veiculo  = relationship("Frota")
+
+
+# ─────────────────────────────────────────────
 # FATURAMENTO UNITÁRIO (receita por veículo/mês)
 # ─────────────────────────────────────────────
 class FatUnitario(Base):
@@ -153,10 +224,30 @@ class FatUnitario(Base):
     id          = Column(Integer, primary_key=True, autoincrement=True)
     mes         = Column(Date)
     id_veiculo  = Column(Integer, ForeignKey("frota.id"))
+    id_empresa  = Column(Integer, ForeignKey("empresas.id"))
     contrato    = Column(String(100))
     medicao     = Column(Numeric(14, 2))
     trabalhado  = Column(Integer)
     parado      = Column(Integer)
+
+
+# ─────────────────────────────────────────────
+# FATURAMENTO MENSAL (faturas de locação)
+# ─────────────────────────────────────────────
+class FaturamentoMensal(Base):
+    __tablename__ = "faturamento_mensal"
+
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    id_fatura_excel    = Column(Integer)
+    emissao            = Column(Date)
+    vencimento         = Column(Date)
+    valor_locacoes     = Column(Numeric(14, 2))
+    valor_recebido     = Column(Numeric(14, 2))
+    status_recebimento = Column(String(30))
+    empresa            = Column(String(200))   # nome do cliente/tomador
+    id_contrato_excel  = Column(String(100))   # IDs separados por ";" ex: "10;13"
+    id_cliente_excel   = Column(Integer)
+    origem             = Column(String(50))
 
 
 # ─────────────────────────────────────────────
@@ -166,9 +257,48 @@ class Reembolso(Base):
     __tablename__ = "reembolsos"
 
     id               = Column(Integer, primary_key=True, autoincrement=True)
-    emissao          = Column(Date)
+
+    # Chave natural do Excel — permite upsert idempotente
+    id_reembolso_excel = Column(Integer, unique=True, nullable=True)
+
+    # Tipo: Transporte | Manutenção | Multa de Trânsito | Franquia de Seguro | Encargo | Outro
+    tipo             = Column(String(80))
+
+    id_empresa       = Column(Integer)
+    id_contrato      = Column(Integer)
+    id_cliente       = Column(Integer)
     id_veiculo       = Column(Integer, ForeignKey("frota.id"))
+    id_ord_serv      = Column(String(50))
+    id_multa         = Column(Integer)
+
+    recibo           = Column(String(50))
+    emissao          = Column(Date)
+    vencimento       = Column(Date)
+    empresa          = Column(String(200))   # nome resolvido da empresa
     valor_reembolso  = Column(Numeric(14, 2))
+    data_entrada     = Column(Date)          # data de recebimento efetivo
+    valor_recebido   = Column(Numeric(14, 2))
+    encargos         = Column(Numeric(14, 2))  # Encargos de Faturamento
+    forma_recebimento = Column(String(50))
+    status_recebimento = Column(String(30))   # Recebido | Vencido | Cancelado | Pendente
+
+    # Campo manual (novo cadastro via UI)
+    descricao        = Column(Text)
+    documento_rede   = Column(String(100))
+
+    # Campos de vínculo (novos)
+    placas_json      = Column(Text)        # JSON list de placas selecionadas (múltiplos veículos)
+    fatura_mes       = Column(String(7))   # "YYYY-MM" — referência de fatura para tipo Encargo
+    numero_os        = Column(String(50))  # OS de referência para tipo Manutenção/Franquia
+
+    criado_em        = Column(DateTime, server_default=func.now())
+
+    veiculo = relationship("Frota")
+
+    __table_args__ = (
+        Index("idx_reimb_emissao", "emissao"),
+        Index("idx_reimb_veiculo", "id_veiculo"),
+    )
 
 
 # ─────────────────────────────────────────────
@@ -193,6 +323,8 @@ class SeguroMensal(Base):
     vencimento = Column(Date)
     id_veiculo = Column(Integer, ForeignKey("frota.id"))
     valor      = Column(Numeric(14, 2))
+    id_empresa = Column(Integer, ForeignKey("empresas.id"))
+    empresa    = Column(String(20))   # deprecated: usar id_empresa
 
 
 # ─────────────────────────────────────────────
@@ -205,6 +337,8 @@ class Imposto(Base):
     ano_imposto      = Column(Integer)
     id_veiculo       = Column(Integer, ForeignKey("frota.id"))
     valor_total_final = Column(Numeric(14, 2))
+    id_empresa       = Column(Integer, ForeignKey("empresas.id"))
+    empresa          = Column(String(20))   # deprecated: usar id_empresa
 
 
 # ─────────────────────────────────────────────
@@ -217,6 +351,8 @@ class Rastreamento(Base):
     vencimento = Column(Date)
     id_veiculo = Column(Integer, ForeignKey("frota.id"))
     valor      = Column(Numeric(14, 2))
+    id_empresa = Column(Integer, ForeignKey("empresas.id"))
+    empresa    = Column(String(20))   # deprecated: usar id_empresa
 
 
 # ─────────────────────────────────────────────
@@ -233,7 +369,8 @@ class OrdemServico(Base):
     id_veiculo  = Column(Integer, ForeignKey("frota.id"), nullable=False)
     placa       = Column(String(20))
     modelo      = Column(String(100))
-    empresa     = Column(String(100))
+    id_empresa  = Column(Integer, ForeignKey("empresas.id"))
+    empresa     = Column(String(100))   # deprecated: usar id_empresa
     id_contrato = Column(String(50))
     implemento  = Column(String(80))
 
@@ -263,6 +400,13 @@ class OrdemServico(Base):
     veiculo       = relationship("Frota")
     itens         = relationship("OsItem", back_populates="os", cascade="all, delete-orphan")
     notas_fiscais = relationship("NotaFiscal", back_populates="os")  # sem cascade (financeiro)
+
+    @property
+    def sistema(self):
+        for item in (self.itens or []):
+            if item.sistema:
+                return item.sistema
+        return None
 
     __table_args__ = (
         Index("idx_os_veiculo_data", "id_veiculo", "data_execucao"),
@@ -308,7 +452,7 @@ class NotaFiscal(Base):
 
     numero_nf        = Column(String(50))
     tipo_nf          = Column(String(20), nullable=False)  # Produto | Servico
-    empresa_faturada = Column(String(100))
+    id_empresa       = Column(Integer, ForeignKey("empresas.id"))
     fornecedor       = Column(String(120))
     valor_total_nf   = Column(Numeric(14, 2))
     data_emissao     = Column(Date)

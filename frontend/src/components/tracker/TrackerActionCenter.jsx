@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast'
 import { AlertTriangle, RefreshCw, Wrench, ZapOff, CheckCircle, Activity, ArrowRight, Play } from 'lucide-react'
 import { useTrackerActions } from '../../hooks/useTrackerActions'
 
@@ -53,7 +54,7 @@ export default function TrackerActionCenter({
     const confirmed = window.confirm(`Confirmar ação?\n\n${action.message}`)
     if (!confirmed) return
     executeAction(action)
-    alert('Ação aplicada (simulação)')
+    toast.success('Ação aplicada (simulação)')
   }
 
   return (

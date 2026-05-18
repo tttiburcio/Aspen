@@ -4,9 +4,11 @@ import VehicleModal from '../components/VehicleModal'
 import VehicleKmBadge from '../components/tracker/VehicleKmBadge'
 import TrackerStatusBadge from '../components/tracker/TrackerStatusBadge'
 import { useTrackerData } from '../hooks/useTrackerData'
+import { useCompanies } from '../contexts/CompanyContext'
+import EmptyState from '../components/EmptyState'
 import {
   Search, ChevronUp, ChevronDown, ChevronsUpDown,
-  Filter, X, MapPin, Flame, AlertTriangle, ZapOff, ExternalLink,
+  Filter, X, MapPin, Flame, AlertTriangle, ZapOff, ExternalLink, Truck
 } from 'lucide-react'
 import { HIGH_USAGE_THRESHOLD, IDLE_KM_MONTH } from '../constants/trackerThresholds'
 import { normalizePlaca } from '../utils/trackerApi'
@@ -29,17 +31,19 @@ const STATUS_COLORS = {
 
 function statusBadge(status) {
   const s = (status || '').toUpperCase()
+  const cls = STATUS_COLORS[s]
+  if (cls) return <span className={cls}>{status}</span>
   if (s.includes('FROTA') || s.includes('ATIVO') || s.includes('LOCADO')) {
-    return <span style={{ backgroundColor: '#ecfdf5', color: '#064e3b', borderColor: '#a7f3d0', borderWidth: '1px', borderStyle: 'solid', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', whiteSpace: 'nowrap' }}>{status}</span>
+    return <span className={STATUS_COLORS['FROTA']}>{status}</span>
   }
   if (s.includes('ADM') || s.includes('ADMINISTRAÇÃO') || s.includes('ADMINISTRACAO')) {
-    return <span style={{ backgroundColor: '#eff6ff', color: '#1e3a8a', borderColor: '#bfdbfe', borderWidth: '1px', borderStyle: 'solid', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', whiteSpace: 'nowrap' }}>{status}</span>
+    return <span className={STATUS_COLORS['ADM']}>{status}</span>
   }
   if (s.includes('VENDIDO')) {
-    return <span style={{ backgroundColor: '#f9fafb', color: '#111827', borderColor: '#e5e7eb', borderWidth: '1px', borderStyle: 'solid', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', whiteSpace: 'nowrap' }}>{status}</span>
+    return <span className={STATUS_COLORS['VENDIDO']}>{status}</span>
   }
   if (s.includes('DESATIVADO') || s.includes('INATIVO') || s.includes('PARADO')) {
-    return <span style={{ backgroundColor: '#fef2f2', color: '#7f1d1d', borderColor: '#fecaca', borderWidth: '1px', borderStyle: 'solid', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', whiteSpace: 'nowrap' }}>{status}</span>
+    return <span className={STATUS_COLORS['DESATIVADO']}>{status}</span>
   }
   return <span style={{ backgroundColor: '#fffbeb', color: '#78350f', borderColor: '#fde68a', borderWidth: '1px', borderStyle: 'solid', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', whiteSpace: 'nowrap' }}>{status || '—'}</span>
 }
@@ -52,32 +56,37 @@ function SortIcon({ col, sortCol, sortDir }) {
 }
 
 const COLUMNS = [
-  { key: 'placa',              label: 'Placa',        align: 'left',  fmt: v => <span className="font-mono font-bold text-g-50 text-[15px] tracking-wide">{v}</span> },
-  { key: 'modelo',             label: 'Modelo',       align: 'left',  fmt: v => <span className="text-g-300 text-sm font-semibold">{v}</span> },
+  { key: 'placa',              label: 'Placa',        align: 'left',  fmt: v => <span className="font-mono font-bold text-g-200 text-sm tracking-wide">{v}</span> },
+  { key: 'modelo',             label: 'Modelo',       align: 'left',  fmt: v => <span className="text-g-400 text-sm">{v}</span> },
   { key: 'status',             label: 'Status',       align: 'left',  fmt: v => statusBadge(v) },
-  { key: 'receita_total',      label: 'Receita',      align: 'left',  fmt: v => <span className="font-mono text-g-200 text-sm font-bold tabular-nums">{brl(v)}</span> },
-  { key: 'custo_total',        label: 'Custo',        align: 'left',  fmt: v => <span className="font-mono text-orange-600 font-bold dark:text-orange-400 text-sm tabular-nums">{brl(v)}</span> },
+  { key: 'receita_total',      label: 'Receita',      align: 'left',  fmt: v => <span className="font-mono text-g-300 text-sm font-semibold tabular-nums">{brl(v)}</span> },
+  { key: 'custo_total',        label: 'Custo',        align: 'left',  fmt: v => <span className="font-mono text-g-500 text-sm tabular-nums">{brl(v)}</span> },
   { key: 'margem',             label: 'Margem',       align: 'left',  fmt: v => (
-    <span className={`font-mono font-bold text-sm tabular-nums ${v >= 0 ? 'text-g-50' : 'text-red-600 dark:text-red-400'}`}>{brl(v)}</span>
+    <span className={`font-mono font-semibold text-sm tabular-nums ${v >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{brl(v)}</span>
   )},
   { key: 'margem_pct',         label: '% Margem',     align: 'left',  fmt: v => (
-    <span className={`text-sm font-bold tabular-nums ${v >= 0 ? 'text-g-300' : 'text-red-600 dark:text-red-400'}`}>{pct(v)}</span>
+    <span className={`text-sm font-bold tabular-nums ${v >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(v)}</span>
   )},
-  { key: 'dias_trabalhado',    label: 'Dias Trab.',   align: 'left',  fmt: v => <span className="text-g-600 text-sm font-semibold tabular-nums">{dias(v)}</span> },
+  { key: 'dias_trabalhado',    label: 'Dias Trab.',   align: 'left',  fmt: v => <span className="text-g-500 text-sm tabular-nums">{dias(v)}</span> },
   { key: 'receita_por_dia',    label: 'R$/Dia',       align: 'left',  fmt: v => v > 0
-    ? <span className="font-mono text-sm text-g-400 font-bold tabular-nums">{brlShort(v)}</span>
-    : <span className="text-g-800 text-sm font-bold">—</span> },
-  { key: 'custo_manutencao',   label: 'Manutenção',   align: 'left',  fmt: v => <span className="font-mono font-bold text-sm text-orange-600 dark:text-orange-400 tabular-nums">{brl(v)}</span> },
-  { key: 'custo_seguro',       label: 'Seguro',       align: 'left',  fmt: v => <span className="font-mono font-bold text-sm text-red-600 dark:text-red-400 tabular-nums">{brl(v)}</span> },
-  { key: 'custo_impostos',     label: 'Impostos',     align: 'left',  fmt: v => <span className="font-mono font-bold text-sm text-purple-600 dark:text-purple-400 tabular-nums">{brl(v)}</span> },
-  { key: 'custo_rastreamento', label: 'Rastreamento', align: 'left',  fmt: v => <span className="font-mono font-bold text-sm text-amber-600 dark:text-amber-400 tabular-nums">{brl(v)}</span> },
+    ? <span className="font-mono text-sm text-g-400 tabular-nums">{brlShort(v)}</span>
+    : <span className="text-g-700 text-sm">—</span> },
+  { key: 'custo_manutencao',   label: 'Manutenção',   align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
+  { key: 'custo_seguro',       label: 'Seguro',       align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
+  { key: 'custo_impostos',     label: 'Impostos',     align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
+  { key: 'custo_rastreamento', label: 'Rastreamento', align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
   { key: '_km_mes',            label: 'KM Tracker',   align: 'left',  fmt: () => null },
 ]
+
+const EXCEPTIONS_STATUS = new Set(['VENDIDO', 'ADMINISTRAÇÃO', 'ADMINISTRACAO', 'ADM', 'DESATIVADO'])
 
 export default function VehiclesPage({
   vehicles, year, regions = [], region, onRegionChange,
   trackerFilter = null, onTrackerFilterConsumed,
 }) {
+  const { selectedCompany } = useCompanies()
+  const isTkj = selectedCompany?.sigla?.toUpperCase() === 'TKJ'
+
   // Enrich vehicles with tracker km so the _km_mes column is sortable
   const { trackerOnline, trackerUsage, getVehicleKm, highUsageVehicles, idleVehicles } = useTrackerData({ year })
   const [selectedPlaca, setSelectedPlaca] = useState(null)
@@ -119,14 +128,18 @@ export default function VehiclesPage({
     vehicles.map(v => {
       const isAdm = v.placa && (v.placa.toUpperCase() === 'TJW7I85' || v.placa.toUpperCase() === 'ERA6A58')
       const sVal = isAdm || (v.status && v.status.toUpperCase() === 'ADM') ? 'Administração' : v.status
+      // No contexto TKJ, todos os veículos em operação exibem 'Frota' (são propriedade TKJ)
+      const displayStatus = isTkj && !EXCEPTIONS_STATUS.has((sVal || '').toUpperCase())
+        ? 'Frota'
+        : sVal
       return {
         ...v,
-        status: sVal,
+        status: displayStatus,
         _km_mes: getVehicleKm(v.placa)?.km ?? null
       }
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [vehicles, trackerUsage],
+    [vehicles, trackerUsage, isTkj],
   )
 
   const statuses = useMemo(() =>
@@ -346,21 +359,21 @@ export default function VehiclesPage({
       {/* Summary totals */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="card p-3.5 flex flex-col gap-1">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-bold">Receita Filtrada</span>
-          <span className="text-g-500 font-bold font-mono text-xl tabular-nums">{brl(totals.receita_total)}</span>
+          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">Receita Filtrada</span>
+          <span className="text-g-300 font-semibold font-mono text-xl tabular-nums">{brl(totals.receita_total)}</span>
         </div>
         <div className="card p-3.5 flex flex-col gap-1">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-bold">Custo Filtrado</span>
-          <span className="text-orange-500 font-bold font-mono text-xl tabular-nums">{brl(totals.custo_total)}</span>
+          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">Custo Filtrado</span>
+          <span className="text-g-500 font-semibold font-mono text-xl tabular-nums">{brl(totals.custo_total)}</span>
         </div>
-        <div className="card p-3.5 flex flex-col gap-1 border-l-4 border-l-emerald-500/20">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-bold">Margem Filtrada</span>
+        <div className="card p-3.5 flex flex-col gap-1">
+          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">Margem Filtrada</span>
           <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {brl(totals.margem)}
           </span>
         </div>
         <div className="card p-3.5 flex flex-col gap-1">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-bold">% Margem</span>
+          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">% Margem</span>
           <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
             {totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
           </span>
@@ -416,8 +429,12 @@ export default function VehiclesPage({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={COLUMNS.length} className="td text-center text-g-700 py-16">
-                    Nenhum veículo encontrado.
+                  <td colSpan={COLUMNS.length} className="td p-0 border-b-0">
+                    <EmptyState 
+                      icon={Truck}
+                      title="Nenhum veículo encontrado"
+                      message="Tente ajustar os filtros ou limpar sua busca."
+                    />
                   </td>
                 </tr>
               )}
@@ -429,38 +446,38 @@ export default function VehiclesPage({
                     TOTAIS ({filtered.length})
                   </td>
                   <td className="td">
-                    <span className="font-mono text-g-200 font-semibold tabular-nums text-sm">{brl(totals.receita_total)}</span>
+                    <span className="font-mono text-g-300 font-semibold tabular-nums text-sm">{brl(totals.receita_total)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-orange-300 font-semibold tabular-nums text-sm">{brl(totals.custo_total)}</span>
+                    <span className="font-mono text-g-500 tabular-nums text-sm">{brl(totals.custo_total)}</span>
                   </td>
                   <td className="td">
-                    <span className={`font-mono font-bold tabular-nums text-sm ${totals.margem >= 0 ? 'text-g-50' : 'text-red-300'}`}>
+                    <span className={`font-mono font-bold tabular-nums text-sm ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                       {brl(totals.margem)}
                     </span>
                   </td>
                   <td className="td">
-                    <span className={`text-sm font-bold tabular-nums ${totals.margem >= 0 ? 'text-g-300' : 'text-red-400'}`}>
+                    <span className={`text-sm font-bold tabular-nums ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                       {totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
                     </span>
                   </td>
                   <td className="td">
                     <span className="text-g-600 text-sm tabular-nums">{dias(totals.dias_trabalhado)}</span>
                   </td>
-                  <td className="td text-g-800 text-sm">—</td>
+                  <td className="td text-g-700 text-sm">—</td>
                   <td className="td">
-                    <span className="font-mono text-sm text-orange-400 tabular-nums">{brl(totals.custo_manutencao)}</span>
+                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_manutencao)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-sm text-red-400 tabular-nums">{brl(totals.custo_seguro)}</span>
+                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_seguro)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-sm text-purple-400 tabular-nums">{brl(totals.custo_impostos)}</span>
+                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_impostos)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-sm text-amber-400 tabular-nums">{brl(totals.custo_rastreamento)}</span>
+                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_rastreamento)}</span>
                   </td>
-                  <td className="td text-g-800 text-sm">—</td>
+                  <td className="td text-g-700 text-sm">—</td>
                 </tr>
               </tfoot>
             )}

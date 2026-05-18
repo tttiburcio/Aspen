@@ -15,7 +15,7 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
   boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
 }
-const TICK = { fill: '#52525b', fontSize: 11 }
+const TICK = { fill: '#64748b', fontSize: 11 }
 
 const PALETTE = [
   '#6366f1','#8b5cf6','#a78bfa',
@@ -76,7 +76,7 @@ const TreemapContent = ({ x, y, width, height, name, total, depth }) => {
             {name?.length > 14 ? name.slice(0, 13) + '…' : name}
           </text>
           {height > 44 && (
-            <text x={x + 8} y={y + 34} fill="#71717a" fontSize={10}
+            <text x={x + 8} y={y + 34} fill="#94a3b8" fontSize={10}
               style={{ pointerEvents: 'none' }}>
               {brlShort(total)}
             </text>
@@ -106,7 +106,7 @@ export function SistemaTreemap({ data = [] }) {
 // ── 3. Tipo (Preventiva/Corretiva) — Donut ───────────────
 export function TipoPie({ data = [] }) {
   const colors = { 'Corretiva': '#ef4444', 'Preventiva': '#6366f1', 'Preditiva': '#f59e0b' }
-  const d = data.map(x => ({ ...x, color: colors[x.name] || '#71717a' }))
+  const d = data.map(x => ({ ...x, color: colors[x.name] || '#64748b' }))
   return (
     <ResponsiveContainer width="100%" height={220}>
       <PieChart>
@@ -191,7 +191,7 @@ export function TrendProjectionChart({ monthly = [], projection = [] }) {
           x={last?.name}
           stroke="rgba(255,255,255,0.2)"
           strokeDasharray="4 4"
-          label={{ value: 'Hoje', fill: '#71717a', fontSize: 10 }}
+          label={{ value: 'Hoje', fill: '#94a3b8', fontSize: 10 }}
         />
       </ComposedChart>
     </ResponsiveContainer>
@@ -209,12 +209,12 @@ export function VehicleScatter({ vehicles = [] }) {
         <XAxis
           dataKey="receita_total" type="number"
           tickFormatter={brlShort} tick={TICK} axisLine={false} tickLine={false}
-          label={{ value: 'Receita', position: 'insideBottom', offset: -16, fill: '#52525b', fontSize: 11 }}
+          label={{ value: 'Receita', position: 'insideBottom', offset: -16, fill: '#64748b', fontSize: 11 }}
         />
         <YAxis
           dataKey="custo_manutencao" type="number"
           tickFormatter={brlShort} tick={TICK} axisLine={false} tickLine={false} width={60}
-          label={{ value: 'Manutenção', angle: -90, position: 'insideLeft', fill: '#52525b', fontSize: 11 }}
+          label={{ value: 'Manutenção', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 11 }}
         />
         <Tooltip
           cursor={{ strokeDasharray: '3 3', stroke: '#3f3f46' }}

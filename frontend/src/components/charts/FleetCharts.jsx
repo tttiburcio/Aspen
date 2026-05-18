@@ -103,7 +103,7 @@ export function TopVehiclesChart({ vehicles, n = 10 }) {
         <XAxis
           type="number"
           tickFormatter={brlShort}
-          tick={{ fill: '#71717a', fontSize: 10 }}
+          tick={{ fill: '#64748b', fontSize: 10 }}
           axisLine={false} tickLine={false}
         />
         <YAxis

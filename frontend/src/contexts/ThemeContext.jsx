@@ -4,12 +4,12 @@ const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(
-    () => localStorage.getItem('tkj-theme') || 'light'
+    () => localStorage.getItem('aspen-theme') || 'light'
   )
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('tkj-theme', theme)
+    localStorage.setItem('aspen-theme', theme)
   }, [theme])
 
   const toggle = () => setTheme(t => t === 'dark' ? 'light' : 'dark')

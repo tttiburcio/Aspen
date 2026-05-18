@@ -15,8 +15,9 @@ import { useVehicleTrackerData } from '../hooks/useVehicleTrackerData'
 import TrackerVehicleTab from './tracker/TrackerVehicleTab'
 
 const TOOLTIP_STYLE = {
-  background: '#ffffff', border: '1px solid #e5e7eb',
-  borderRadius: 8, fontSize: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+  background: '#1E293B', border: '1px solid rgb(30 51 80)',
+  borderRadius: 8, fontSize: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+  color: '#f1f5f9',
 }
 
 
@@ -34,15 +35,15 @@ function ContractBreakdown({ contracts = [] }) {
           layout="vertical"
           margin={{ top: 4, right: 12, bottom: 4, left: 80 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" horizontal={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" horizontal={false} />
           <XAxis type="number" tickFormatter={brlShort}
-            tick={{ fill: '#4b5563', fontSize: 10 }} axisLine={false} tickLine={false} />
+            tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
           <YAxis type="category" dataKey="contrato" width={78}
-            tick={{ fill: '#374151', fontSize: 10.5 }} axisLine={false} tickLine={false} />
+            tick={{ fill: '#94a3b8', fontSize: 10.5 }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
-            labelStyle={{ color: '#111827', fontWeight: '600' }}
-            itemStyle={{ color: '#005743', fontWeight: 'bold' }}
+            labelStyle={{ color: '#f1f5f9', fontWeight: '600' }}
+            itemStyle={{ color: '#22C55E', fontWeight: 'bold' }}
             formatter={v => [brl(v), 'Receita']}
           />
           <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]} maxBarSize={22}>
