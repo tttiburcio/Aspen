@@ -283,7 +283,9 @@ def _compute_core(year: int, empresa: str = None):
             sql_frota = pd.read_sql(
                 "SELECT id AS IDVeiculo, placa AS Placa, id_empresa AS IDEmpresa, "
                 "marca AS Marca, modelo AS Modelo, status AS Status, "
-                "tipagem AS Tipagem, implemento AS Implemento FROM frota", conn)
+                "tipagem AS Tipagem, implemento AS Implemento, "
+                "ano_modelo AS AnoModelo, tabela_fipe AS TabelaFipe, "
+                "valor_implemento AS ValorImplemento, valor_total AS ValorTotal FROM frota", conn)
             if not sql_frota.empty:
                 cols_to_merge = [c for c in ["AnoModelo", "TabelaFipe", "ValorImplemento", "ValorTotal"] if c in frota.columns]
                 if "Placa" in frota.columns and cols_to_merge:

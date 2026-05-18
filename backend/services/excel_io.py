@@ -39,6 +39,10 @@ def load_raw(force: bool = False) -> dict:
             return _cache
         _cache.clear()
         _cache_mtime = mtime
+        if not EXCEL_PATH.exists():
+            logger.warning("Excel não encontrado em %s — operando em modo SQL-only", EXCEL_PATH)
+            _cache.update({k: pd.DataFrame() for k in SHEETS})
+            return _cache
         with pd.ExcelFile(EXCEL_PATH) as xl:
             for key, name in SHEETS.items():
                 try:

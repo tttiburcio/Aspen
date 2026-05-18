@@ -28,16 +28,19 @@ class Empresa(Base):
 class Frota(Base):
     __tablename__ = "frota"
 
-    id          = Column(Integer, primary_key=True)   # IDVeiculo original
-    placa       = Column(String(20), unique=True, nullable=False)
-    id_empresa  = Column(Integer, ForeignKey("empresas.id"))
-    empresa     = Column(String(100))   # deprecated: usar id_empresa
-    marca       = Column(String(80))
-    modelo      = Column(String(100))
-    status      = Column(String(50))
-    tipagem     = Column(String(80))
-    implemento  = Column(String(80))
-    valor_total = Column(Numeric(14, 2))
+    id               = Column(Integer, primary_key=True)   # IDVeiculo original
+    placa            = Column(String(20), unique=True, nullable=False)
+    id_empresa       = Column(Integer, ForeignKey("empresas.id"))
+    empresa          = Column(String(100))   # deprecated: usar id_empresa
+    marca            = Column(String(80))
+    modelo           = Column(String(100))
+    ano_modelo       = Column(String(10))
+    status           = Column(String(50))
+    tipagem          = Column(String(80))
+    implemento       = Column(String(80))
+    tabela_fipe      = Column(Numeric(14, 2))
+    valor_implemento = Column(Numeric(14, 2))
+    valor_total      = Column(Numeric(14, 2))
 
     manutencoes = relationship("Manutencao", back_populates="veiculo")
 
@@ -291,6 +294,7 @@ class Reembolso(Base):
     fatura_mes       = Column(String(7))   # "YYYY-MM" — referência de fatura para tipo Encargo
     numero_os        = Column(String(50))  # OS de referência para tipo Manutenção/Franquia
 
+    categoria        = Column(String(50))   # categoria financeira do reembolso
     criado_em        = Column(DateTime, server_default=func.now())
 
     veiculo = relationship("Frota")
