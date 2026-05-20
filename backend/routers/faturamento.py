@@ -338,6 +338,15 @@ def criar_fatura(
     return _enrich(row, emp_map, ct_map)
 
 
+@router.delete("/api/db/faturamento/{fatura_id}", status_code=204)
+def deletar_fatura(fatura_id: int, db: Session = Depends(get_db)):
+    row = db.get(models.FaturamentoMensal, fatura_id)
+    if not row:
+        raise HTTPException(404, "Fatura não encontrada")
+    db.delete(row)
+    db.commit()
+
+
 @router.patch("/api/db/faturamento/{fatura_id}")
 def patch_fatura(
     fatura_id: int,

@@ -1,8 +1,10 @@
 ﻿import { useState, useEffect, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   FileText, CheckCircle, AlertCircle, TrendingDown, Search, X, Loader2, ChevronDown, Plus,
+  Ban, Pencil, Trash2,
 } from 'lucide-react'
-import { getFaturamento, getFaturamentoSummary } from '../utils/api'
+import { getFaturamento, getFaturamentoSummary, patchFatura, deletarFatura } from '../utils/api'
 import FaturaFormModal from '../components/modals/FaturaFormModal'
 import { brl, brlShort, dateBR } from '../utils/format'
 import { useCompanies } from '../contexts/CompanyContext'
@@ -60,9 +62,14 @@ export default function FaturamentoPage({ year }) {
   const [filterRecStatus, setFilterRecStatus] = useState('')
   const [filterImpStatus, setFilterImpStatus] = useState('')
   const [sort, setSort] = useState({ col: 'emissao', dir: 'desc' })
-  const [modalPagar, setModalPagar]   = useState(null) // { fatura, mode }
+  const [modalPagar, setModalPagar]   = useState(null)
   const [modalNova,  setModalNova]    = useState(false)
+  const [modalEditar, setModalEditar] = useState(null)
   const [expandedEmp, setExpandedEmp] = useState(null)
+  const [deletando,  setDeletando]    = useState(null)
+  const [cancelando, setCancelando]   = useState(null)
+  const [confirm, setConfirm]         = useState(null)
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -116,6 +123,50 @@ export default function FaturamentoPage({ year }) {
       {label}{sort.col === key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
     </th>
   )
+
+  const handleDeletar = (r) => {
+    setConfirm({
+      message: `Excluir fatura #${r.numero_fatura || r.id}? Esta ação não pode ser desfeita.`,
+      danger: true,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setDeletando(r.id)
+        try {
+          await deletarFatura(r.id)
+          toast.success('Fatura excluída')
+          setConfirm(null)
+          load()
+        } catch (e) {
+          toast.error(e.response?.data?.detail || 'Erro ao excluir')
+        } finally {
+          setDeletando(null)
+          setConfirmLoading(false)
+        }
+      },
+    })
+  }
+
+  const handleCancelar = (r) => {
+    setConfirm({
+      message: `Cancelar fatura #${r.numero_fatura || r.id}?`,
+      danger: false,
+      onConfirm: async () => {
+        setConfirmLoading(true)
+        setCancelando(r.id)
+        try {
+          await patchFatura(r.id, { status_recebimento: 'Cancelado' })
+          toast.success('Fatura cancelada')
+          setConfirm(null)
+          load()
+        } catch (e) {
+          toast.error(e.response?.data?.detail || 'Erro ao cancelar')
+        } finally {
+          setCancelando(null)
+          setConfirmLoading(false)
+        }
+      },
+    })
+  }
 
   if (loading) return (
     <div className="flex flex-col gap-6">
@@ -343,14 +394,13 @@ export default function FaturamentoPage({ year }) {
                   {thSort('aliquota_imposto', 'Alíq. %',   'right')}
                   {thSort('valor_liquido',    'Líquido',   'right')}
                   {thSort('valor_recebido',   'Recebido',  'right')}
-                  {thSort('status_recebimento', 'St. Rec.')}
-                  <th className="th text-right whitespace-nowrap">Ações</th>
+                  {thSort('status_recebimento', 'Status')}
+                  <th className="th text-left whitespace-nowrap">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(r => {
-                  const isPendRec = r.status_recebimento === 'Pendente' || r.status_recebimento === 'Vencido'
-                  const isPendImp = r.status_imposto === 'Pendente'
+                  const isPendente = r.status_recebimento !== 'Recebido' && r.status_recebimento !== 'Cancelado'
                   return (
                     <tr key={r.id} className="border-b border-g-800 hover:bg-g-850/60 transition-colors">
                       <td className="td whitespace-nowrap font-mono text-g-500 tabular-nums text-center">
@@ -391,15 +441,32 @@ export default function FaturamentoPage({ year }) {
                         <Badge status={r.status_recebimento || 'Pendente'} map={REC_CLS} />
                       </td>
                       <td className="td whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          {isPendRec && (
-                            <button
-                              onClick={() => setModalPagar({ fatura: r, mode: 'recebimento' })}
-                              className="px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-800/50 rounded hover:bg-emerald-500/10 hover:text-emerald-700 transition-colors whitespace-nowrap"
-                            >
-                              Receber
-                            </button>
-                          )}
+                        <div className="flex items-center gap-1">
+                          <div className="w-[54px] flex justify-center">
+                            {isPendente ? (
+                              <button
+                                onClick={() => setModalPagar({ fatura: r, mode: 'recebimento' })}
+                                className="px-2 py-0.5 text-[11px] font-semibold text-black-600 border border-black-800/50 rounded hover:bg-black-500/10 hover:text-emerald-700 transition-colors whitespace-nowrap"
+                              >
+                                Pago
+                              </button>
+                            ) : null}
+                          </div>
+                          <button onClick={() => handleCancelar(r)} title="Cancelar"
+                            className={`p-1 rounded transition-colors ${isPendente ? 'text-g-600 hover:text-amber-600 hover:bg-amber-400/10' : 'invisible'}`}
+                            tabIndex={isPendente ? 0 : -1}>
+                            <Ban className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setModalEditar(r)} title="Editar"
+                            className="p-1 rounded text-g-600 hover:text-g-300 hover:bg-g-800 transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDeletar(r)} disabled={deletando === r.id} title="Excluir"
+                            className="p-1 rounded text-red-900 hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40">
+                            {deletando === r.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -432,6 +499,14 @@ export default function FaturamentoPage({ year }) {
         />
       )}
 
+      {modalEditar && (
+        <FaturaFormModal
+          fatura={modalEditar}
+          onClose={() => setModalEditar(null)}
+          onSaved={load}
+        />
+      )}
+
       {modalPagar && (
         <PagarFaturaModal
           fatura={modalPagar.fatura}
@@ -439,6 +514,36 @@ export default function FaturamentoPage({ year }) {
           onClose={() => setModalPagar(null)}
           onSaved={load}
         />
+      )}
+
+      {confirm && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-g-950 border border-g-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <p className="text-g-200 text-sm leading-relaxed mb-6">{confirm.message}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setConfirm(null); setConfirmLoading(false) }}
+                disabled={confirmLoading}
+                className="px-4 py-2 text-sm rounded-lg text-g-400 hover:text-g-200 hover:bg-g-800 transition-colors disabled:opacity-40"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={confirm.onConfirm}
+                disabled={confirmLoading}
+                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 ${
+                  confirm.danger
+                    ? 'bg-red-700 hover:bg-red-600 text-white border border-red-600'
+                    : 'bg-g-800 hover:bg-g-700 text-g-200 border border-g-700'
+                }`}
+              >
+                {confirmLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

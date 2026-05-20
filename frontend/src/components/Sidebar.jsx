@@ -1,55 +1,5 @@
-import { LayoutDashboard, Truck, Wrench, BarChart2, Banknote, Receipt, FileText, FileWarning, ChevronDown, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Truck, Wrench, BarChart2, Banknote, CircleDollarSign, FileText, FileWarning, ChevronDown, Menu, X } from 'lucide-react'
 import { useState } from 'react'
-
-const LEGENDS = {
-  overview: [
-    { color: '#22c55e', label: 'Locação' },
-    { color: '#34d399', label: 'Reembolsos' },
-    { color: '#f97316', label: 'Manutenção' },
-    { color: '#ef4444', label: 'Seguro' },
-    { color: '#a855f7', label: 'Impostos' },
-    { color: '#f59e0b', label: 'Rastreamento' },
-  ],
-  vehicles: [
-    { color: '#22c55e', label: 'Locação' },
-    { color: '#34d399', label: 'Reembolsos' },
-    { color: '#f97316', label: 'Manutenção' },
-    { color: '#ef4444', label: 'Seguro' },
-    { color: '#a855f7', label: 'Impostos' },
-    { color: '#f59e0b', label: 'Rastreamento' },
-  ],
-  maintenance: [
-    { color: '#f59e0b', label: 'Em andamento' },
-    { color: '#f97316', label: 'Aguardando peça' },
-    { color: '#94a3b8', label: 'Pendente' },
-    { color: '#10b981', label: 'Finalizada' },
-    { color: '#22c55e', label: 'Preventiva' },
-    { color: '#ef4444', label: 'Corretiva' },
-  ],
-  analysis: [
-    { color: '#f59e0b', label: 'Pneu' },
-    { color: '#6366f1', label: 'Freio' },
-    { color: '#22c55e', label: 'Revisão' },
-    { color: '#f97316', label: 'Implemento' },
-  ],
-  faturamento: [
-    { color: '#22c55e', label: 'Faturamento bruto' },
-    { color: '#f59e0b', label: 'Imposto (11,33%)' },
-    { color: '#6366f1', label: 'Valor líquido' },
-    { color: '#10b981', label: 'Recebido' },
-  ],
-  contratos: [
-    { color: '#22c55e', label: 'Ativo' },
-    { color: '#f59e0b', label: 'Renovado' },
-    { color: '#94a3b8', label: 'Encerrado' },
-  ],
-  debitos: [
-    { color: '#f59e0b', label: 'IPVA' },
-    { color: '#f97316', label: 'Licenciamento' },
-    { color: '#ef4444', label: 'Multas / NIC' },
-    { color: '#22c55e', label: 'Pago' },
-  ],
-}
 
 const NAV = [
   { key: 'overview',     label: 'Visão Geral',  icon: LayoutDashboard },
@@ -57,13 +7,12 @@ const NAV = [
   { key: 'maintenance',  label: 'Manutenção',   icon: Wrench },
   { key: 'analysis',     label: 'Intervalos',   icon: BarChart2 },
   { key: 'reembolsos',   label: 'Reembolsos',   icon: Banknote },
-  { key: 'faturamento',  label: 'Faturamento',  icon: Receipt   },
+  { key: 'faturamento',  label: 'Faturamento',  icon: CircleDollarSign },
   { key: 'contratos',    label: 'Contratos',    icon: FileText  },
   { key: 'debitos',      label: 'Débitos',      icon: FileWarning },
 ]
 
 export default function Sidebar({ page, setPage, years, year, setYear, isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) {
-  const legend = LEGENDS[page] || LEGENDS.overview
   const [showYears, setShowYears] = useState(false)
 
   return (
@@ -183,28 +132,6 @@ export default function Sidebar({ page, setPage, years, year, setYear, isCollaps
         ))}
       </nav>
 
-      {/* Legend */}
-      {!isCollapsed && (
-        <div className="mt-auto px-3 pt-4 pb-3 border-t border-g-900">
-          <p className="text-g-700 text-[10px] uppercase tracking-widest font-semibold mb-3 px-1">Categorias</p>
-          <div className="space-y-2">
-            {legend.map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-2.5">
-                <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: color }} />
-                <span className="text-g-600 text-xs">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isCollapsed && (
-        <div className="mt-auto px-3 pt-4 pb-4 border-t border-g-900 flex justify-center">
-          <div className="flex flex-col gap-2 items-center">
-             <div className="w-2 h-2 rounded-full bg-g-500" />
-          </div>
-        </div>
-      )}
       </aside>
     </>
   )

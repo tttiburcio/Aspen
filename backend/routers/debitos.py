@@ -13,6 +13,7 @@ PATCH /api/db/multas/{id}        → atualiza status / pagamento / indicação /
 POST /api/db/multas/{id}/nic     → gera multa NIC (Não Indicação de Condutor) a partir de original
 PATCH /api/db/frota/{id}/restricoes → atualiza restrições administrativas/judiciais do veículo
 """
+import json as _json
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sf, text
@@ -460,31 +461,56 @@ def list_multas(
         for c in db.query(models.Cliente).filter(models.Cliente.id.in_(cids)).all():
             cliente_map[c.id] = c.nome
 
-    # Reembolsos vinculados às multas
+    # Reembolsos vinculados às multas (campo direto id_multa OU ids_multa_json)
     reimb_map: dict = {}
     if mids:
+        mids_set = set(mids)
+
+        def _add_to_map(mid, valor, status):
+            if mid not in reimb_map:
+                reimb_map[mid] = {"qtd": 0, "valor": 0.0, "status": status}
+            reimb_map[mid]["qtd"]   += 1
+            reimb_map[mid]["valor"] += float(valor or 0)
+            if status == "Recebido":
+                reimb_map[mid]["status"] = "Recebido"
+
+        # 1) Campo direto (legado)
         reimb_rows = (
             db.query(
                 models.Reembolso.id_multa,
-                sf.count(models.Reembolso.id).label("qtd"),
-                sf.sum(models.Reembolso.valor_recebido).label("valor"),
+                models.Reembolso.valor_recebido,
                 models.Reembolso.status_recebimento,
             )
             .filter(
                 models.Reembolso.id_multa.in_(mids),
                 models.Reembolso.status_recebimento.in_(["Recebido", "Pendente"]),
             )
-            .group_by(models.Reembolso.id_multa, models.Reembolso.status_recebimento)
             .all()
         )
         for r in reimb_rows:
-            mid = r[0]
-            if mid not in reimb_map:
-                reimb_map[mid] = {"qtd": 0, "valor": 0.0, "status": r[3]}
-            reimb_map[mid]["qtd"]   += r[1]
-            reimb_map[mid]["valor"] += float(r[2] or 0)
-            if r[3] == "Recebido":
-                reimb_map[mid]["status"] = "Recebido"
+            _add_to_map(r[0], r[1], r[2])
+
+        # 2) ids_multa_json (múltiplas multas por reembolso)
+        json_rows = (
+            db.query(
+                models.Reembolso.ids_multa_json,
+                models.Reembolso.valor_recebido,
+                models.Reembolso.status_recebimento,
+            )
+            .filter(
+                models.Reembolso.ids_multa_json.isnot(None),
+                models.Reembolso.status_recebimento.in_(["Recebido", "Pendente"]),
+            )
+            .all()
+        )
+        for ids_json, valor, status in json_rows:
+            try:
+                ids = _json.loads(ids_json)
+            except Exception:
+                continue
+            for mid in ids:
+                if mid in mids_set:
+                    _add_to_map(mid, valor, status)
 
     return [_enrich_multa(r, frota_map, emp_map, cliente_map, reimb_map) for r in rows]
 

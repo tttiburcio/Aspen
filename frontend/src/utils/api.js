@@ -43,6 +43,7 @@ export const getFaturamentoPrefill  = (contrato_id, mes)    => api.get('/db/fatu
 export const getProximoNumeroFatura = (empresa_id)          => api.get('/db/faturamento/proximo-numero', { params: { empresa_id } }).then(r => r.data)
 export const criarFatura            = (payload)             => api.post('/db/faturamento', payload).then(r => r.data)
 export const patchFatura            = (id, payload)         => api.patch(`/db/faturamento/${id}`, payload).then(r => r.data)
+export const deletarFatura          = (id)                   => api.delete(`/db/faturamento/${id}`)
 
 // ── Contratos ─────────────────────────────────────────────────────────
 export const getContratos              = (params = {})              => api.get('/db/contratos', { params }).then(r => r.data)
