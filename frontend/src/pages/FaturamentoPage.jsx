@@ -344,7 +344,6 @@ export default function FaturamentoPage({ year }) {
                   {thSort('valor_liquido',    'Líquido',   'right')}
                   {thSort('valor_recebido',   'Recebido',  'right')}
                   {thSort('status_recebimento', 'St. Rec.')}
-                  {thSort('status_imposto',   'St. Imp.')}
                   <th className="th text-right whitespace-nowrap">Ações</th>
                 </tr>
               </thead>
@@ -373,7 +372,7 @@ export default function FaturamentoPage({ year }) {
                       <td className="td whitespace-nowrap text-right font-mono font-semibold text-g-200 tabular-nums">
                         {brl(r.valor_locacoes)}
                       </td>
-                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-amber-600">
+                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-gray-600">
                         {brl(r.valor_imposto)}
                         {r.encargo_imposto > 0 && (
                           <span className="block text-[10px] text-amber-600 tabular-nums">+{brl(r.encargo_imposto)} enc.</span>
@@ -382,22 +381,14 @@ export default function FaturamentoPage({ year }) {
                       <td className="td whitespace-nowrap text-right text-g-600 tabular-nums">
                         {r.aliquota_imposto?.toFixed(2)}%
                       </td>
-                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-indigo-400">
+                      <td className="td whitespace-nowrap text-right font-mono font-semibold text-g-200 tabular-nums">
                         {brl(r.valor_liquido)}
                       </td>
-                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-emerald-700">
+                      <td className="td whitespace-nowrap text-right font-mono tabular-nums font-semibold text-emerald-700">
                         {r.valor_recebido > 0 ? brl(r.valor_recebido) : '—'}
                       </td>
                       <td className="td whitespace-nowrap">
                         <Badge status={r.status_recebimento || 'Pendente'} map={REC_CLS} />
-                      </td>
-                      <td className="td whitespace-nowrap">
-                        <Badge status={r.status_imposto || 'Pendente'} map={IMP_CLS} />
-                        {r.data_pgto_imposto && (
-                          <span className="block text-[10px] text-g-700 tabular-nums mt-0.5">
-                            {dateBR(r.data_pgto_imposto)}
-                          </span>
-                        )}
                       </td>
                       <td className="td whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
@@ -407,14 +398,6 @@ export default function FaturamentoPage({ year }) {
                               className="px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-800/50 rounded hover:bg-emerald-500/10 hover:text-emerald-700 transition-colors whitespace-nowrap"
                             >
                               Receber
-                            </button>
-                          )}
-                          {isPendImp && (
-                            <button
-                              onClick={() => setModalPagar({ fatura: r, mode: 'imposto' })}
-                              className="px-2 py-0.5 text-[11px] font-semibold text-amber-600 border border-amber-700/40 rounded hover:bg-amber-500/10 hover:text-amber-600 transition-colors whitespace-nowrap"
-                            >
-                              Imp.
                             </button>
                           )}
                         </div>
@@ -429,11 +412,11 @@ export default function FaturamentoPage({ year }) {
                     Total filtrado ({filtered.length})
                   </td>
                   <td className="td text-right font-mono font-bold text-g-200 tabular-nums">{brl(totalFiltrado)}</td>
-                  <td className="td text-right font-mono font-bold text-amber-600 tabular-nums">{brl(impostoFiltrado)}</td>
+                  <td className="td text-right font-mono font-bold text-g-200 tabular-nums">{brl(impostoFiltrado)}</td>
                   <td className="td" />
-                  <td className="td text-right font-mono font-bold text-indigo-400 tabular-nums">{brl(liquidoFiltrado)}</td>
+                  <td className="td text-right font-mono font-bold text-g-200 tabular-nums">{brl(liquidoFiltrado)}</td>
                   <td className="td text-right font-mono font-bold text-emerald-700 tabular-nums">{brl(recebidoFiltrado)}</td>
-                  <td colSpan={3} className="td" />
+                  <td colSpan={2} className="td" />
                 </tr>
               </tfoot>
             </table>
