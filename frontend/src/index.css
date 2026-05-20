@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -83,7 +83,7 @@
   }
 
   .badge-amber {
-    @apply bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium px-2 py-0.5 rounded-full;
+    @apply bg-amber-50 text-amber-600 border border-amber-200 text-xs font-medium px-2 py-0.5 rounded-full;
   }
 
   .value-pos     { @apply text-g-200 font-semibold; }
@@ -140,7 +140,7 @@
 }
 
 [data-theme="dark"] .badge-green {
-  @apply bg-emerald-950/60 text-emerald-300 border-emerald-800/60;
+  @apply bg-emerald-950/60 text-emerald-700 border-emerald-800/60;
 }
 
 [data-theme="dark"] .badge-red {
@@ -148,7 +148,7 @@
 }
 
 [data-theme="dark"] .badge-amber {
-  @apply bg-amber-950/60 text-amber-300 border-amber-800/60;
+  @apply bg-amber-950/60 text-amber-600 border-amber-800/60;
 }
 
 [data-theme="dark"] .value-pos     { @apply text-g-200; }

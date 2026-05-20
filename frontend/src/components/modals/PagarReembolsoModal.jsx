@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+﻿import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Loader2, CheckCircle, Banknote } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -56,7 +56,7 @@ export default function PagarReembolsoModal({ reembolso, onClose, onSaved }) {
         <div className="px-6 py-5 border-b border-g-800 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
+              <CheckCircle className="w-5 h-5 text-emerald-700" />
             </div>
             <div>
               <h2 className="text-g-100 font-bold text-base">Registrar Recebimento</h2>
@@ -129,8 +129,8 @@ export default function PagarReembolsoModal({ reembolso, onClose, onSaved }) {
             <div className="grid grid-cols-3 gap-2 px-4 py-3 bg-g-900 border border-g-800 rounded-xl text-center">
               {[
                 { label: 'A Receber', val: reembolso.valor_reembolso || 0, color: 'text-g-200' },
-                { label: 'Recebido',  val: parseFloat(form.valor_recebido) || 0, color: 'text-emerald-400' },
-                { label: 'Saldo',     val: saldo, color: saldo > 0.01 ? 'text-amber-400' : 'text-emerald-400' },
+                { label: 'Recebido',  val: parseFloat(form.valor_recebido) || 0, color: 'text-emerald-700' },
+                { label: 'Saldo',     val: saldo, color: saldo > 0.01 ? 'text-amber-600' : 'text-emerald-700' },
               ].map(({ label, val, color }) => (
                 <div key={label}>
                   <p className="text-g-600 text-[10px] uppercase tracking-wider mb-0.5">{label}</p>

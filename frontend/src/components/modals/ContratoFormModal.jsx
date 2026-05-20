@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Loader2, FileText, Building2, Truck, Search, AlertCircle,
@@ -295,7 +295,7 @@ export default function ContratoFormModal({ contrato = null, onClose, onSaved })
                   >
                     <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${assinado ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
-                  <span className={`text-sm font-medium transition-colors ${assinado ? 'text-emerald-400' : 'text-g-600'}`}>
+                  <span className={`text-sm font-medium transition-colors ${assinado ? 'text-emerald-700' : 'text-g-600'}`}>
                     {assinado ? 'Contrato assinado' : 'Aguardando assinatura'}
                   </span>
                 </label>
@@ -339,7 +339,7 @@ export default function ContratoFormModal({ contrato = null, onClose, onSaved })
                 Veículos & Valores Mensais
               </p>
               {selectedVeics.length === 0 && (
-                <span className="ml-auto flex items-center gap-1 text-amber-500 text-[10px] font-semibold">
+                <span className="ml-auto flex items-center gap-1 text-amber-600 text-[10px] font-semibold">
                   <AlertCircle className="w-3 h-3" /> Obrigatório
                 </span>
               )}
@@ -463,7 +463,7 @@ export default function ContratoFormModal({ contrato = null, onClose, onSaved })
                             <button
                               type="button"
                               onClick={() => addVeiculo(v)}
-                              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-emerald-500/10 transition-colors"
+                              className="text-xs font-semibold text-emerald-700 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-500/10 transition-colors"
                             >
                               + Adicionar
                             </button>

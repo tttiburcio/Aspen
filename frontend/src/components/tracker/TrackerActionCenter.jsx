@@ -1,10 +1,10 @@
-import toast from 'react-hot-toast'
+﻿import toast from 'react-hot-toast'
 import { AlertTriangle, RefreshCw, Wrench, ZapOff, CheckCircle, Activity, ArrowRight, Play } from 'lucide-react'
 import { useTrackerActions } from '../../hooks/useTrackerActions'
 
 const SEVERITY = {
   high:   { bg: 'bg-red-500/10',   border: 'border-red-500/20',   text: 'text-red-400'   },
-  medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
+  medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-600' },
   low:    { bg: 'bg-blue-500/10',  border: 'border-blue-500/20',  text: 'text-blue-400'  },
 }
 
@@ -17,11 +17,11 @@ const TYPE_ICON = {
 function HealthBar({ score }) {
   const color  = score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500'
   const label  = score >= 80 ? 'Saudável' : score >= 50 ? 'Atenção' : 'Crítico'
-  const tColor = score >= 80 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-red-400'
+  const tColor = score >= 80 ? 'text-emerald-700' : score >= 50 ? 'text-amber-600' : 'text-red-400'
   const badge  = score >= 80
-    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
     : score >= 50
-    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
     : 'bg-red-500/10 text-red-400 border-red-500/20'
 
   return (
@@ -69,7 +69,7 @@ export default function TrackerActionCenter({
 
       {allGood ? (
         <div className="flex items-center gap-2 text-g-600 text-sm">
-          <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+          <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
           Frota equilibrada — nenhuma ação necessária.
         </div>
       ) : (

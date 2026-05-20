@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Loader2, Receipt, Building2, Calendar, Hash,
@@ -270,7 +270,7 @@ export default function FaturaFormModal({ onClose, onSaved }) {
           <div className="flex items-start justify-between mb-5">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <Receipt className="w-6 h-6 text-emerald-400" />
+                <Receipt className="w-6 h-6 text-emerald-700" />
               </div>
               <div>
                 <h2 className="text-g-50 font-bold text-lg tracking-tight">Nova Fatura de Locação</h2>
@@ -327,7 +327,7 @@ export default function FaturaFormModal({ onClose, onSaved }) {
                     onClick={() => { setIncluirInativos(v => !v); setContrato(null) }}
                     className={`flex items-center gap-2 text-xs self-start px-3 py-2 rounded-lg border transition-all ${
                       incluirInativos
-                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-600'
                         : 'border-g-800 text-g-600 hover:border-g-700 hover:text-g-400'
                     }`}
                   >
@@ -351,7 +351,7 @@ export default function FaturaFormModal({ onClose, onSaved }) {
                             </span>
                             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
                               contrato.status === 'Ativo'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-700/40'
+                                ? 'bg-emerald-500/10 text-emerald-700 border-emerald-700/40'
                                 : 'bg-g-850 text-g-600 border-g-800'
                             }`}>{contrato.status}</span>
                           </div>
@@ -507,7 +507,7 @@ export default function FaturaFormModal({ onClose, onSaved }) {
                     <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando valores…
                   </span>
                 ) : prefillDone ? (
-                  <span className="flex items-center gap-1.5 text-emerald-600 text-xs font-semibold shrink-0">
+                  <span className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold shrink-0">
                     <Sparkles className="w-3.5 h-3.5" /> Valores pré-preenchidos
                   </span>
                 ) : (
@@ -637,9 +637,9 @@ export default function FaturaFormModal({ onClose, onSaved }) {
                   <div className="grid grid-cols-4 gap-3 p-5 bg-g-900 border border-g-800 rounded-xl">
                     {[
                       { label: 'Faturamento Bruto', val: totalLoc, color: 'text-g-100',      sub: `${veiculoRows.length} veíc.` },
-                      { label: 'Imposto',           val: imposto,  color: 'text-amber-400',  sub: `${aliqNum.toFixed(2)}%` },
+                      { label: 'Imposto',           val: imposto,  color: 'text-amber-600',  sub: `${aliqNum.toFixed(2)}%` },
                       { label: 'Valor Líquido',     val: liquido,  color: 'text-indigo-400', sub: 'Bruto − Imposto' },
-                      { label: 'Já Recebido',       val: recNum,   color: recNum > 0 ? 'text-emerald-400' : 'text-g-700', sub: statusRec },
+                      { label: 'Já Recebido',       val: recNum,   color: recNum > 0 ? 'text-emerald-700' : 'text-g-700', sub: statusRec },
                     ].map(({ label, val, color, sub }) => (
                       <div key={label} className="text-center">
                         <p className="text-g-600 text-[10px] uppercase tracking-wider mb-1">{label}</p>

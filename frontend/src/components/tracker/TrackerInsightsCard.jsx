@@ -1,4 +1,4 @@
-import { Flame, Trophy, ZapOff } from 'lucide-react'
+﻿import { Flame, Trophy, ZapOff } from 'lucide-react'
 import { km, num, pct } from '../../utils/format'
 import { HIGH_USAGE_THRESHOLD, IDLE_KM_MONTH } from '../../constants/trackerThresholds'
 
@@ -37,7 +37,7 @@ export default function TrackerInsightsCard({ highUsageVehicles, idleVehicles, t
       {/* Top KM */}
       <div className="card p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
           <p className="text-g-600 text-xs font-semibold uppercase tracking-widest">Top KM</p>
         </div>
         <div className="flex flex-col gap-1.5">
@@ -56,16 +56,16 @@ export default function TrackerInsightsCard({ highUsageVehicles, idleVehicles, t
       {/* Ociosos */}
       <div className="card p-4">
         <div className="flex items-center gap-2 mb-3">
-          <ZapOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <ZapOff className="w-3.5 h-3.5 text-amber-600 shrink-0" />
           <p className="text-g-600 text-xs font-semibold uppercase tracking-widest">Ociosos</p>
           <span className="text-g-800 text-[10px] whitespace-nowrap">&lt;{IDLE_KM_MONTH} km/mês</span>
         </div>
-        <p className="text-2xl font-bold font-mono text-amber-400 tabular-nums">{num(idleVehicles.length)}</p>
+        <p className="text-2xl font-bold font-mono text-amber-600 tabular-nums">{num(idleVehicles.length)}</p>
         <p className="text-g-700 text-xs mt-1 tabular-nums">{pct(idlePct)} da frota</p>
         {idleVehicles.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {idleVehicles.slice(0, 4).map(v => (
-              <span key={v.placa} className="text-[10px] font-mono text-amber-400/70 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+              <span key={v.placa} className="text-[10px] font-mono text-amber-600/70 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                 {v.placa}
               </span>
             ))}

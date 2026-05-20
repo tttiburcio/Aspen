@@ -1,4 +1,4 @@
-import { createPortal } from 'react-dom'
+﻿import { createPortal } from 'react-dom'
 import { X, Wrench, FileText, CreditCard, Package, AlertTriangle, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 import { brl, dateBR, num } from '../../utils/format'
@@ -73,7 +73,7 @@ function NfCard({ nf, index, itemLookup }) {
           <span className="text-g-100 text-base font-bold font-mono">{nf.numero_nf || 'Sem número'}</span>
           <span className="text-g-500 text-xs px-2.5 py-1 bg-g-900 rounded border border-g-800">{nf.tipo_nf}</span>
           {nf.tipo_nf_needs_review && (
-            <span className="flex items-center gap-1.5 text-amber-400 text-xs font-bold">
+            <span className="flex items-center gap-1.5 text-amber-600 text-xs font-bold">
               <AlertTriangle className="w-3.5 h-3.5" /> Revisar
             </span>
           )}
@@ -151,12 +151,12 @@ function NfCard({ nf, index, itemLookup }) {
                       )}
                       {p.forma_pgto && <span className="text-g-600">{p.forma_pgto}</span>}
                       {p.prorrogada && (
-                        <span className="text-amber-500 text-xs font-bold">PRORROGADA</span>
+                        <span className="text-amber-600 text-xs font-bold">PRORROGADA</span>
                       )}
                     </div>
                     <div className="flex items-center gap-4">
                       {p.valor_atualizado && p.valor_atualizado !== p.valor_parcela && (
-                        <span className="font-mono text-amber-500 font-bold text-xs">(Atual: {brl(p.valor_atualizado)})</span>
+                        <span className="font-mono text-amber-600 font-bold text-xs">(Atual: {brl(p.valor_atualizado)})</span>
                       )}
                       <span className="font-mono font-bold text-g-100 text-base">{brl(p.valor_parcela)}</span>
                       <ParcelaBadge status={p.status_pagamento} />
@@ -283,7 +283,7 @@ export default function DetalhesOsModal({ manutencao: os, onClose, onDeleted }) 
               {dias !== null && (
                 <div className="flex flex-col gap-0.5">
                   <p className="text-g-500 text-[10px] uppercase tracking-widest font-semibold">Dias na Oficina</p>
-                  <p className={`text-[15px] font-medium ${dias > 30 ? 'text-red-500' : dias > 7 ? 'text-amber-500' : 'text-g-200'}`}>
+                  <p className={`text-[15px] font-medium ${dias > 30 ? 'text-red-500' : dias > 7 ? 'text-amber-600' : 'text-g-200'}`}>
                     {dias} {dias === 1 ? 'dia' : 'dias'}
                   </p>
                 </div>
@@ -319,8 +319,8 @@ export default function DetalhesOsModal({ manutencao: os, onClose, onDeleted }) 
             )}
             {os.descricao_pendente && (
               <div className="mt-3 bg-amber-950/30 border border-amber-800/40 rounded-lg px-5 py-4 shadow-inner">
-                <p className="text-amber-500 text-[10px] uppercase tracking-widest font-bold mb-1.5">Descrição Pendente</p>
-                <p className="text-amber-200 text-xs leading-relaxed font-medium">{os.descricao_pendente}</p>
+                <p className="text-amber-600 text-[10px] uppercase tracking-widest font-bold mb-1.5">Descrição Pendente</p>
+                <p className="text-amber-600 text-xs leading-relaxed font-medium">{os.descricao_pendente}</p>
               </div>
             )}
           </div>

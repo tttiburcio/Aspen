@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+﻿import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useCountUp } from '../hooks/useCountUp'
 
 /**
@@ -19,11 +19,11 @@ export default function KPICard({
     : value
 
   const trendIcon =
-    trend > 0  ? <TrendingUp  className="w-3 h-3 text-emerald-600" /> :
+    trend > 0  ? <TrendingUp  className="w-3 h-3 text-emerald-700" /> :
     trend < 0  ? <TrendingDown className="w-3 h-3 text-red-500" /> :
                  <Minus        className="w-3 h-3 text-g-600" />
 
-  const trendColor = trend > 0 ? 'text-emerald-600' : trend < 0 ? 'text-red-500' : 'text-g-600'
+  const trendColor = trend > 0 ? 'text-emerald-700' : trend < 0 ? 'text-red-500' : 'text-g-600'
 
   return (
     <div

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+﻿import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   FileWarning, AlertCircle, CheckCircle2, Car, Truck, Search, X,
@@ -96,7 +96,7 @@ function FilterChip({ label, active, count, onClick, color = 'default' }) {
     default: active ? 'bg-g-200 text-white border-g-200'       : 'bg-g-900 text-g-500 border-g-800 hover:border-g-700 hover:text-g-400',
     red:     active ? 'bg-red-600 text-white border-red-600'   : 'bg-g-900 text-g-500 border-g-800 hover:border-red-300 hover:text-red-600',
     amber:   active ? 'bg-amber-600 text-white border-amber-600' : 'bg-g-900 text-g-500 border-g-800 hover:border-amber-300 hover:text-amber-600',
-    green:   active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-g-900 text-g-500 border-g-800 hover:border-emerald-300 hover:text-emerald-600',
+    green:   active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-g-900 text-g-500 border-g-800 hover:border-emerald-300 hover:text-emerald-700',
     indigo:  active ? 'bg-indigo-600 text-white border-indigo-600'   : 'bg-g-900 text-g-500 border-g-800 hover:border-indigo-300 hover:text-indigo-600',
   }
   return (
@@ -229,15 +229,15 @@ function AtualizarEncargoModal({ debito, tipo, onClose, onSaved }) {
         {/* Estimativa oficial com breakdown */}
         {enc.diasAtraso > 0 && (
           <div className="px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 grid grid-cols-2 gap-y-1 text-xs">
-            <span className="text-amber-700 font-semibold col-span-2 mb-0.5">Estimativa oficial ({enc.diasAtraso}d atraso)</span>
-            <span className="text-amber-700/80">Valor original</span>
-            <span className="font-mono tabular-nums text-amber-800 text-right">{brl(valorBase)}</span>
-            <span className="text-amber-700/80">Multa de mora <span className="text-[9px] opacity-70">(0,33%/dia, máx {tipo === 'multa' ? '10%' : '20%'})</span></span>
-            <span className="font-mono tabular-nums text-amber-800 text-right">+ {brl(enc.multa)}</span>
-            <span className="text-amber-700/80">Juros SELIC <span className="text-[9px] opacity-70">(~{tipo === 'licenciamento' ? '1,00' : '1,09'}%/mês)</span></span>
-            <span className="font-mono tabular-nums text-amber-800 text-right">+ {brl(enc.juros)}</span>
-            <span className="text-amber-800 font-bold border-t border-amber-200 pt-1">Total estimado</span>
-            <span className="font-mono font-bold tabular-nums text-amber-800 text-right border-t border-amber-200 pt-1">{brl(totalOficial)}</span>
+            <span className="text-amber-600 font-semibold col-span-2 mb-0.5">Estimativa oficial ({enc.diasAtraso}d atraso)</span>
+            <span className="text-amber-600/80">Valor original</span>
+            <span className="font-mono tabular-nums text-amber-600 text-right">{brl(valorBase)}</span>
+            <span className="text-amber-600/80">Multa de mora <span className="text-[9px] opacity-70">(0,33%/dia, máx {tipo === 'multa' ? '10%' : '20%'})</span></span>
+            <span className="font-mono tabular-nums text-amber-600 text-right">+ {brl(enc.multa)}</span>
+            <span className="text-amber-600/80">Juros SELIC <span className="text-[9px] opacity-70">(~{tipo === 'licenciamento' ? '1,00' : '1,09'}%/mês)</span></span>
+            <span className="font-mono tabular-nums text-amber-600 text-right">+ {brl(enc.juros)}</span>
+            <span className="text-amber-600 font-bold border-t border-amber-200 pt-1">Total estimado</span>
+            <span className="font-mono font-bold tabular-nums text-amber-600 text-right border-t border-amber-200 pt-1">{brl(totalOficial)}</span>
           </div>
         )}
 
@@ -249,7 +249,7 @@ function AtualizarEncargoModal({ debito, tipo, onClose, onSaved }) {
               className={`${inputCls} font-mono pr-24`} />
             {enc.total > 0 && (
               <button onClick={() => setValorAtual(String(totalOficial))}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 font-semibold hover:text-amber-500 whitespace-nowrap">
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 font-semibold hover:text-amber-600 whitespace-nowrap">
                 Usar {brl(totalOficial)}
               </button>
             )}
@@ -335,7 +335,7 @@ function PagarDebitoModal({ debito, tipo, onClose, onSaved }) {
               {sugerido > 0 && !encAtual && (
                 <button onClick={() => setEncargo(String(sugerido))}
                   title="Usar valor sugerido"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 hover:text-amber-500 font-semibold">
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 hover:text-amber-600 font-semibold">
                   calc.
                 </button>
               )}
@@ -349,7 +349,7 @@ function PagarDebitoModal({ debito, tipo, onClose, onSaved }) {
             <span className="text-g-600">Encargo</span>
             <span className="font-mono text-amber-600 tabular-nums text-right">{brl(encargoNum)}</span>
             <span className="text-g-600 font-semibold">Total final</span>
-            <span className="font-mono font-bold text-amber-700 tabular-nums text-right">{brl(totalFinal)}</span>
+            <span className="font-mono font-bold text-amber-600 tabular-nums text-right">{brl(totalFinal)}</span>
           </>}
         </div>
         <div className="flex gap-3 justify-end">
@@ -413,7 +413,7 @@ function PagarMultaModal({ multa, onClose, onSaved }) {
               {sugerido > 0 && (
                 <button onClick={() => setEncargo(String(sugerido))}
                   title="Usar sugestão"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 hover:text-amber-500 font-semibold">
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-amber-600 hover:text-amber-600 font-semibold">
                   calc.
                 </button>
               )}
@@ -431,13 +431,13 @@ function PagarMultaModal({ multa, onClose, onSaved }) {
           <span className="font-mono font-semibold tabular-nums text-g-300 text-right">{brl(multa.valor_multa)}</span>
           {multa.valor_com_desconto > 0 && <>
             <span className="text-g-600">Com desconto ({multa.desconto_pct}%)</span>
-            <span className="font-mono text-emerald-600 tabular-nums text-right">{brl(multa.valor_com_desconto)}</span>
+            <span className="font-mono text-emerald-700 tabular-nums text-right">{brl(multa.valor_com_desconto)}</span>
           </>}
           {encargoNum > 0 && <>
             <span className="text-g-600">Encargo</span>
             <span className="font-mono text-amber-600 tabular-nums text-right">{brl(encargoNum)}</span>
             <span className="text-g-600 font-semibold">Total a pagar</span>
-            <span className="font-mono font-bold text-amber-700 tabular-nums text-right">{brl(totalFinal)}</span>
+            <span className="font-mono font-bold text-amber-600 tabular-nums text-right">{brl(totalFinal)}</span>
           </>}
         </div>
         <div className="flex gap-3 justify-end">
@@ -554,7 +554,7 @@ function CadastrarBoletoModal({ multa, onClose, onSaved }) {
         {valorDesc && (
           <div className="px-3 py-2.5 rounded-lg bg-g-850 border border-g-800 text-xs flex justify-between">
             <span className="text-g-600">Com desconto ({desc}%):</span>
-            <span className="font-mono font-bold text-emerald-600 tabular-nums">{brl(parseFloat(valorDesc))}</span>
+            <span className="font-mono font-bold text-emerald-700 tabular-nums">{brl(parseFloat(valorDesc))}</span>
           </div>
         )}
         <div className="flex gap-3 justify-end">
@@ -648,7 +648,7 @@ function NovaMultaModal({ frota, onClose, onSaved }) {
               <FieldGroup label="Prazo p/ Indicação">
                 <input type="date" value={dataLimite} onChange={e => setDataLimite(e.target.value)} className={inputCls} />
               </FieldGroup>
-              <div className="col-span-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+              <div className="col-span-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-600">
                 Após salvar, use o drawer da multa para indicar o condutor e cadastrar o boleto com o valor definitivo.
               </div>
             </div>
@@ -763,7 +763,7 @@ function MultaDrawer({ multa, onClose, onSaved, onOpenPagar, onOpenIndicar, onOp
         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
           <span className="text-g-600">Valor</span>
           <span className="font-mono font-semibold text-g-200 tabular-nums">{brl(multa.valor_multa)}</span>
-          {multa.valor_com_desconto > 0 && <><span className="text-g-600">Com desconto</span><span className="font-mono text-emerald-600 tabular-nums">{brl(multa.valor_com_desconto)}</span></>}
+          {multa.valor_com_desconto > 0 && <><span className="text-g-600">Com desconto</span><span className="font-mono text-emerald-700 tabular-nums">{brl(multa.valor_com_desconto)}</span></>}
           {multa.data_vencimento && <><span className="text-g-600">Vencimento</span><span className={`font-mono tabular-nums ${daysDiff(multa.data_vencimento) < 0 ? 'text-red-600' : 'text-g-400'}`}>{dateBR(multa.data_vencimento)}</span></>}
           {sugerido > 0 && !isPago && <><span className="text-g-600">Encargo sugerido</span><span className="font-mono text-amber-600 tabular-nums">{brl(sugerido)}</span></>}
         </div>
@@ -771,7 +771,7 @@ function MultaDrawer({ multa, onClose, onSaved, onOpenPagar, onOpenIndicar, onOp
         : (
           <div className="flex items-center justify-between gap-2">
             <span className="text-g-500 text-xs">Boleto não cadastrado</span>
-            {!isPago && <button onClick={() => { onOpenBoleto(multa); onClose() }} className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 flex items-center gap-1"><CreditCard className="w-3 h-3" />Cadastrar</button>}
+            {!isPago && <button onClick={() => { onOpenBoleto(multa); onClose() }} className="px-3 py-1 text-xs font-semibold rounded-lg bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100 flex items-center gap-1"><CreditCard className="w-3 h-3" />Cadastrar</button>}
           </div>
         ),
     },
@@ -779,7 +779,7 @@ function MultaDrawer({ multa, onClose, onSaved, onOpenPagar, onOpenIndicar, onOp
       n: 4, label: 'Pagamento', status: p4,
       body: isPago ? (
         <div className="text-xs flex flex-col gap-0.5">
-          <span className="text-emerald-600 font-medium">Pago em {dateBR(multa.data_pagamento)}</span>
+          <span className="text-emerald-700 font-medium">Pago em {dateBR(multa.data_pagamento)}</span>
           <div className="flex gap-3 text-g-600"><span>Valor: <span className="font-mono text-g-400 tabular-nums">{brl(multa.valor_pago)}</span></span>{multa.encargo > 0 && <span>Encargo: <span className="font-mono text-amber-600 tabular-nums">{brl(multa.encargo)}</span></span>}</div>
         </div>
       ) : multa.data_emissao_multa ? (
@@ -816,7 +816,7 @@ function MultaDrawer({ multa, onClose, onSaved, onOpenPagar, onOpenIndicar, onOp
           <div className="text-right shrink-0">
             <p className={`font-mono font-bold text-base tabular-nums ${isNic ? 'text-red-600' : 'text-g-200'}`}>{brl(multa.valor_multa)}</p>
             {multa.valor_com_desconto > 0 && multa.status_multa !== 'Pago' && (
-              <p className="text-emerald-600 font-mono text-[11px] tabular-nums">c/ desc: {brl(multa.valor_com_desconto)}</p>
+              <p className="text-emerald-700 font-mono text-[11px] tabular-nums">c/ desc: {brl(multa.valor_com_desconto)}</p>
             )}
           </div>
         </div>
@@ -857,7 +857,7 @@ function MultaDrawer({ multa, onClose, onSaved, onOpenPagar, onOpenIndicar, onOp
                 {i < phases.length - 1 && <div className="w-px flex-1 bg-g-800 mt-1 mb-1 min-h-[12px]" />}
               </div>
               <div className="pb-4 min-w-0 flex-1">
-                <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${ph.status === 'done' ? 'text-emerald-600' : ph.status === 'active' ? 'text-amber-600' : ph.status === 'error' ? 'text-red-500' : 'text-g-600'}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 ${ph.status === 'done' ? 'text-emerald-700' : ph.status === 'active' ? 'text-amber-600' : ph.status === 'error' ? 'text-red-500' : 'text-g-600'}`}>
                   {ph.n}. {ph.label}
                 </p>
                 {ph.body}
@@ -1021,7 +1021,7 @@ function DebitRow({ d, onPagar, onEncargoIpva, onEncargoLicen }) {
       <td className="td whitespace-nowrap">
         {totalDevido > 0
           ? <span className="font-mono font-bold tabular-nums text-slate-800 text-sm">{brl(totalDevido)}</span>
-          : <span className="text-emerald-600 text-[11px] flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Em dia</span>}
+          : <span className="text-emerald-700 text-[11px] flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Em dia</span>}
       </td>
       <td className="td">
         {!tudoPago ? (
@@ -1166,7 +1166,7 @@ export default function DebitsPage({ year }) {
         try { await criarNicMulta(m.id); toast.success('NIC gerada'); load() } catch(ex) { toast.error(ex.response?.data?.detail || 'Erro') }
       }}
     if (!m.data_emissao_multa)
-      return { label: 'Boleto', cls: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100', fn: e => { e.stopPropagation(); setModalBoleto(m) } }
+      return { label: 'Boleto', cls: 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100', fn: e => { e.stopPropagation(); setModalBoleto(m) } }
     return { label: 'Pagar', cls: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100', fn: e => { e.stopPropagation(); setModalPagarMult(m) } }
   }
 
@@ -1418,7 +1418,7 @@ export default function DebitsPage({ year }) {
                           <td className="td text-right whitespace-nowrap">
                             <p className={`font-mono font-semibold tabular-nums ${isNic ? 'text-red-600' : 'text-slate-800'}`}>{brl(m.valor_multa)}</p>
                             {m.valor_com_desconto > 0 && m.status_multa !== 'Pago' && (
-                              <p className="text-emerald-600 font-mono text-[9px] tabular-nums leading-none mt-0.5">c/ desc: {brl(m.valor_com_desconto)}</p>
+                              <p className="text-emerald-700 font-mono text-[9px] tabular-nums leading-none mt-0.5">c/ desc: {brl(m.valor_com_desconto)}</p>
                             )}
                             {sugerido > 0 && m.status_multa !== 'Pago' && (
                               <p className="text-slate-400 font-mono text-[9px] tabular-nums leading-none mt-0.5">+{brl(sugerido)} enc.</p>
@@ -1448,7 +1448,7 @@ export default function DebitsPage({ year }) {
                                 {nextAction.label}
                               </button>
                             ) : m.status_multa === 'Pago' ? (
-                              <span className="text-emerald-600 text-[11px] flex items-center justify-end gap-1"><CheckCircle2 className="w-3 h-3" />Pago</span>
+                              <span className="text-emerald-700 text-[11px] flex items-center justify-end gap-1"><CheckCircle2 className="w-3 h-3" />Pago</span>
                             ) : null}
                           </td>
                         </tr>

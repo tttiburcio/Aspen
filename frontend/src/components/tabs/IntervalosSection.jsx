@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
+﻿import { useState, useMemo, useCallback, useEffect, Fragment } from 'react'
 import { Activity, Loader2, RotateCcw, ArrowRight, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { getIntervalosAnalysis, deletePneuRodizio } from '../../utils/api'
 import { dateBR, num } from '../../utils/format'
@@ -96,7 +96,7 @@ export default function IntervalosSection() {
               <td className="py-2 px-3 text-right font-mono text-g-300 whitespace-nowrap">{ev.km != null ? num(ev.km) + ' km' : '—'}</td>
               <td className="py-2 px-3 text-right font-mono whitespace-nowrap">
                 {ev.delta_km != null
-                  ? <span className={`font-bold ${isRodizio ? 'text-violet-500' : isAlert ? 'text-amber-600' : 'text-emerald-600'}`}>+{num(ev.delta_km)}</span>
+                  ? <span className={`font-bold ${isRodizio ? 'text-violet-500' : isAlert ? 'text-amber-600' : 'text-emerald-700'}`}>+{num(ev.delta_km)}</span>
                   : <span className="text-g-700">—</span>}
               </td>
               <td className="py-2 px-3 text-right font-mono whitespace-nowrap">
@@ -149,7 +149,7 @@ export default function IntervalosSection() {
             <td className="py-2 px-3 text-right">
               <span className="text-[10px] text-g-600 block">min / médio / máx</span>
               <span className="font-mono text-g-300 text-[11px]">
-                {num(Math.min(...kms))} / <strong className="text-emerald-500">{num(Math.round(kms.reduce((a,b)=>a+b,0)/kms.length))}</strong> / {num(Math.max(...kms))} km
+                {num(Math.min(...kms))} / <strong className="text-emerald-700">{num(Math.round(kms.reduce((a,b)=>a+b,0)/kms.length))}</strong> / {num(Math.max(...kms))} km
               </span>
             </td>
             <td className="py-2 px-3 text-right">
@@ -204,7 +204,7 @@ export default function IntervalosSection() {
                 <td className="py-2.5 px-3 text-g-400 font-mono whitespace-nowrap">{conj.data_compra ? dateBR(conj.data_compra) : '—'}</td>
                 <td className="py-2.5 px-3 text-right font-mono text-g-500 whitespace-nowrap">{conj.km_compra != null ? num(conj.km_compra) + ' km' : '—'}</td>
                 <td className="py-2.5 px-3 text-right font-mono whitespace-nowrap">
-                  <span className={`font-bold ${isDescartado ? 'text-g-600' : 'text-emerald-600'}`}>{conj.km_total != null ? num(conj.km_total) + ' km' : '—'}</span>
+                  <span className={`font-bold ${isDescartado ? 'text-g-600' : 'text-emerald-700'}`}>{conj.km_total != null ? num(conj.km_total) + ' km' : '—'}</span>
                   {totalDias > 0 && <span className="text-blue-400 ml-1.5 font-normal text-[10px]">{totalDias}d</span>}
                 </td>
                 <td className="py-2.5 px-3">
@@ -232,7 +232,7 @@ export default function IntervalosSection() {
                     <span className="ml-1.5 text-[9px] font-bold px-1 py-0.5 rounded bg-orange-100 text-orange-700 uppercase tracking-wide">recapado</span>
                   )}
                   {!conj.recapado && conj.condicao?.toLowerCase() === 'usado' && (
-                    <span className="ml-1.5 text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 uppercase tracking-wide">usado</span>
+                    <span className="ml-1.5 text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-600 uppercase tracking-wide">usado</span>
                   )}
                 </td>
                 <td className="py-2.5 px-3 text-g-500 text-[11px]">{conj.modelo || '—'}</td>
@@ -386,7 +386,7 @@ export default function IntervalosSection() {
                     <td className="py-2 px-3 text-center text-g-500">{row.n_eventos}</td>
                     <td className="py-2 px-3 text-center text-g-400 font-mono">{row.total_pneus || '—'}</td>
                     <td className="py-2 px-4 text-right font-mono text-g-500">{row.min_km != null ? num(row.min_km) + ' km' : '—'}</td>
-                    <td className="py-2 px-4 text-right font-mono font-bold text-emerald-600">{row.avg_km != null ? num(row.avg_km) + ' km' : '—'}</td>
+                    <td className="py-2 px-4 text-right font-mono font-bold text-emerald-700">{row.avg_km != null ? num(row.avg_km) + ' km' : '—'}</td>
                     <td className="py-2 px-4 text-right font-mono text-g-500">{row.max_km != null ? num(row.max_km) + ' km' : '—'}</td>
                   </tr>
                 ))}
@@ -422,7 +422,7 @@ export default function IntervalosSection() {
             const kmRodado = veh.km_rodado_atual
             const avgFleet = fleet?.km?.avg
             const rodadoColor = kmRodado == null ? null
-              : avgFleet && kmRodado > avgFleet * 0.85 ? 'text-amber-500'
+              : avgFleet && kmRodado > avgFleet * 0.85 ? 'text-amber-600'
               : 'text-sky-500'
 
             return (
@@ -447,7 +447,7 @@ export default function IntervalosSection() {
                     {avgKm && (
                       <div className="text-right">
                         <span className="text-g-600 text-[10px] block uppercase tracking-wide">Média ΔKM</span>
-                        <span className="font-mono font-bold text-emerald-600 text-sm">{num(avgKm)} km</span>
+                        <span className="font-mono font-bold text-emerald-700 text-sm">{num(avgKm)} km</span>
                       </div>
                     )}
                     {avgDias && (
@@ -459,7 +459,7 @@ export default function IntervalosSection() {
                     {veh.km_por_posicao?.length > 0 && (
                       <div className="flex items-center gap-2 border-l border-g-800 pl-4 shrink-0">
                         {veh.km_por_posicao.map(p => {
-                          const pColor = avgFleet && p.km_rodado > avgFleet * 0.85 ? 'text-amber-500' : 'text-sky-500'
+                          const pColor = avgFleet && p.km_rodado > avgFleet * 0.85 ? 'text-amber-600' : 'text-sky-500'
                           return (
                             <div key={p.posicao} className="text-right">
                               <span className="text-g-600 text-[10px] block uppercase tracking-wide">{p.posicao}</span>
@@ -506,7 +506,7 @@ export default function IntervalosSection() {
                           <div className="flex flex-wrap gap-2.5">
                             {veh.km_por_posicao.map(p => {
                               const pct  = avgFleet ? Math.round(p.km_rodado / avgFleet * 100) : null
-                              const pCol = avgFleet && p.km_rodado > avgFleet * 0.85 ? 'border-amber-300 bg-amber-50/75 text-amber-800'
+                              const pCol = avgFleet && p.km_rodado > avgFleet * 0.85 ? 'border-amber-300 bg-amber-50/75 text-amber-600'
                                          : 'border-sky-200 bg-white text-sky-800'
                               return (
                                 <div key={p.posicao} className={`flex items-center gap-2 border rounded-lg px-3 py-1.5 ${pCol} shadow-sm text-xs`}>
@@ -545,7 +545,7 @@ export default function IntervalosSection() {
                               <span className="font-mono font-bold text-g-300 text-xs">{med.espec}</span>
                               <span className="text-g-600 text-[10px]">{med.n_eventos} conjunto{med.n_eventos !== 1 ? 's' : ''}</span>
                               {med.total_pneus > 0 && <span className="text-g-600 text-[10px]">· {med.total_pneus} pneus</span>}
-                              {med.avg_km && <span className="text-emerald-600 font-mono text-[10px] ml-auto">ΔKM médio c/ ant.: <strong>{num(med.avg_km)}</strong> km</span>}
+                              {med.avg_km && <span className="text-emerald-700 font-mono text-[10px] ml-auto">ΔKM médio c/ ant.: <strong>{num(med.avg_km)}</strong> km</span>}
                             </div>
                             <div className="overflow-x-auto">
                               <ConjuntoTable conjuntos={med.conjuntos || []} avgKm={fleet?.km?.avg}

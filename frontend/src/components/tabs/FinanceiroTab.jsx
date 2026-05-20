@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+﻿import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import html2pdf from 'html2pdf.js'
 import { dbListParcelas, dbListOs, dbAtualizarParcela, dbCriarParcelaNf } from '../../utils/api'
 import { brl, dateBR, shortenProviderName } from '../../utils/format'
@@ -387,7 +387,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
         </div>
         <div className="card p-4 flex items-center gap-3">
           <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <CheckCircle className="w-4 h-4 text-emerald-700" />
           </div>
           <div>
             <p className="text-g-600 text-xs uppercase tracking-wider">Total Pago</p>
@@ -456,7 +456,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                         className="flex items-center gap-3 w-full p-3 hover:bg-g-850 rounded-lg transition-colors group text-left"
                       >
                         <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg group-hover:bg-emerald-500 transition-colors">
-                          <FileText className="w-4 h-4 text-emerald-500 group-hover:text-white" />
+                          <FileText className="w-4 h-4 text-emerald-700 group-hover:text-white" />
                         </div>
                         <div>
                           <p className="text-g-100 text-[11px] font-bold uppercase tracking-wider">Com Detalhamento</p>
@@ -562,10 +562,10 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                         <div>
                           <span className="text-g-600 text-[10px] uppercase font-bold tracking-widest block mb-0.5">Vencimento</span>
                           <div className="flex flex-col leading-none">
-                            <span className="text-emerald-600 text-lg font-black font-mono tracking-tighter">
+                            <span className="text-emerald-700 text-lg font-black font-mono tracking-tighter">
                               {g.nextVencimento ? dateBR(g.nextVencimento).slice(0, 5) : '—'}
                             </span>
-                            <span className="text-emerald-600/60 text-xs font-mono mt-0.5">
+                            <span className="text-emerald-700/60 text-xs font-mono mt-0.5">
                               {g.nextVencimento ? `/${dateBR(g.nextVencimento).slice(6)}` : ''}
                             </span>
                           </div>
@@ -606,7 +606,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                           <span className={`text-xs font-bold px-3 py-1 rounded-full border shadow-sm ${g.hasVencida ? 'bg-red-500/10 text-red-500 border-red-500/30'
                               : g.hasVenceHoje ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
                                 : g.hasProrrogada ? 'bg-purple-500/10 text-purple-500 border-purple-500/30'
-                                  : g.allPago ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                  : g.allPago ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30'
                                     : 'bg-blue-500/10 text-blue-500 border-blue-500/30'
                             }`}>
                             {g.hasVencida ? 'Vencida' : g.hasVenceHoje ? 'Vence hoje' : g.hasProrrogada ? 'Prorrogada' : g.allPago ? 'Pago' : 'Pendente'}
@@ -714,7 +714,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
               <span className="text-g-500 text-sm font-bold uppercase tracking-[0.2em]">Total Geral do Ano</span>
               <div className="text-right">
                 <span className="text-g-600 text-[10px] block uppercase font-bold mb-0.5">Soma de todos os meses</span>
-                <span className="font-mono font-bold text-emerald-600 text-3xl tabular-nums">
+                <span className="font-mono font-bold text-emerald-700 text-3xl tabular-nums">
                   {brl(nfGroupsByMonth.reduce((s, m) => s + m.subtotal, 0))}
                 </span>
               </div>
@@ -775,7 +775,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                           <span className="flex items-center gap-1 overflow-hidden">
                             <span className="truncate">{p.fornecedor || '—'}</span>
                             {p.fornecedor_os && p.fornecedor && p.fornecedor_os !== p.fornecedor && (
-                              <span className="text-[9px] text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded px-1 flex-shrink-0">≠OS</span>
+                              <span className="text-[9px] text-amber-600 bg-amber-500/10 border border-amber-500/30 rounded px-1 flex-shrink-0">≠OS</span>
                             )}
                           </span>
                         </td>
@@ -843,7 +843,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                         <td className="td font-mono font-bold text-g-200 tabular-nums text-sm" colSpan={2}>
                           <span className="block">{brl(somaValor)}</span>
                           {somaPago > 0 && somaPago < somaValor && (
-                            <span className="block text-emerald-600 text-xs font-normal">{brl(somaPago)} pago</span>
+                            <span className="block text-emerald-700 text-xs font-normal">{brl(somaPago)} pago</span>
                           )}
                         </td>
                         <td className="td" />
@@ -918,8 +918,8 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
               <div className="space-y-2">
                 {pendingByCompany.length > 0 ? pendingByCompany.map(([name, val]) => (
                   <div key={name} className="flex justify-between items-start gap-2 text-[11px]">
-                    <span className="text-emerald-900 font-black uppercase leading-tight flex-1">{name}</span>
-                    <span className="font-mono font-black text-emerald-900 whitespace-nowrap leading-tight">{brl(val)}</span>
+                    <span className="text-emerald-700 font-black uppercase leading-tight flex-1">{name}</span>
+                    <span className="font-mono font-black text-emerald-700 whitespace-nowrap leading-tight">{brl(val)}</span>
                   </div>
                 )) : <p className="text-xs text-g-600 italic">Nenhuma pendência</p>}
               </div>
@@ -975,7 +975,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                             <div className={`text-[9px] font-black px-2 py-1 rounded border inline-flex items-center justify-center uppercase tracking-wider leading-none ${g.hasVencida ? 'bg-red-50 text-red-600 border-red-200'
                                 : g.hasVenceHoje ? 'bg-orange-50 text-orange-600 border-orange-200'
                                   : g.hasProrrogada ? 'bg-purple-50 text-purple-600 border-purple-200'
-                                    : g.allPago ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                    : g.allPago ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                       : 'bg-blue-50 text-blue-600 border-blue-200'
                               }`}>
                               {g.hasVencida ? 'Vencida' : g.hasVenceHoje ? 'Vence hoje' : g.hasProrrogada ? 'Prorrogada' : g.allPago ? 'Pago' : 'Pendente'}
@@ -1034,7 +1034,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
             <div className="text-left" />
             <div className="text-right">
               <p className="text-xs text-g-600 font-black uppercase tracking-widest mb-1">Total Geral do Exercício</p>
-              <p className="text-3xl font-mono font-black text-emerald-600 tracking-tighter">
+              <p className="text-3xl font-mono font-black text-emerald-700 tracking-tighter">
                 {brl(nfGroupsByMonth.reduce((s, m) => s + m.subtotal, 0))}
               </p>
             </div>

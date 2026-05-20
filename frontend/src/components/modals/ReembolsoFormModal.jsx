@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Loader2, Banknote, ChevronRight, Building2, FileText,
@@ -36,8 +36,8 @@ const FORMAS       = ['Boleto', 'Pix', 'TED', 'Débito Automático', 'Cheque', '
 const STATUS_LIST  = ['Pendente', 'Recebido', 'Vencido', 'Cancelado']
 
 const STATUS_COLOR = {
-  Pendente: 'text-amber-400',
-  Recebido: 'text-emerald-400',
+  Pendente: 'text-amber-600',
+  Recebido: 'text-emerald-700',
   Vencido:  'text-red-400',
   Cancelado:'text-g-500',
 }
@@ -406,7 +406,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                <Banknote className="w-5 h-5 text-emerald-400" />
+                <Banknote className="w-5 h-5 text-emerald-700" />
               </div>
               <div>
                 <h2 className="text-g-100 font-bold text-base">
@@ -575,7 +575,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                       tipo === t.key ? 'border-emerald-400 bg-emerald-400' : 'border-g-700'
                     }`} />
                     <div>
-                      <p className={`text-sm font-semibold ${tipo === t.key ? 'text-emerald-300' : 'text-g-300'}`}>
+                      <p className={`text-sm font-semibold ${tipo === t.key ? 'text-emerald-700' : 'text-g-300'}`}>
                         {t.label}
                       </p>
                       <p className="text-g-600 text-[11px] mt-0.5 leading-tight">{t.desc}</p>
@@ -612,7 +612,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                       onClick={() => setShowComReemb(v => !v)}
                       className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-all shrink-0 ${
                         showComReemb
-                          ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                          ? 'border-amber-500/40 bg-amber-500/10 text-amber-600'
                           : 'border-g-800 text-g-600 hover:border-g-700 hover:text-g-400'
                       }`}
                     >
@@ -645,7 +645,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                                 }`}>{sel && <span className="text-white text-[8px] font-bold leading-none">✓</span>}</div>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={`font-mono font-bold text-xs ${sel ? 'text-emerald-300' : 'text-g-200'}`}>
+                                    <span className={`font-mono font-bold text-xs ${sel ? 'text-emerald-700' : 'text-g-200'}`}>
                                       {m.placa}
                                     </span>
                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
@@ -654,11 +654,11 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                                     {m.ait && <span className="text-g-500 text-[10px] font-mono">{m.ait}</span>}
                                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
                                       m.status_multa === 'Pago'
-                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                                        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                        ? 'bg-emerald-500/20 text-black-400 border-emerald-500/40'
+                                        : 'bg-amber-500/20 text-black-400 border-yellow-500/40'
                                     }`}>{m.status_multa}</span>
                                     {m.reembolso_qtd > 0 && (
-                                      <span className="flex items-center gap-0.5 text-[9px] text-amber-500">
+                                      <span className="flex items-center gap-0.5 text-[9px] text-amber-600">
                                         <AlertTriangle className="w-2.5 h-2.5" />Já reembolsado
                                       </span>
                                     )}
@@ -672,7 +672,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                                 </div>
                               </div>
                               <div className="text-right shrink-0">
-                                <p className={`font-mono font-bold text-xs tabular-nums ${sel ? 'text-emerald-300' : 'text-g-200'}`}>
+                                <p className={`font-mono font-bold text-xs tabular-nums ${sel ? 'text-emerald-700' : 'text-g-200'}`}>
                                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                                     m.valor_com_desconto > 0 ? m.valor_com_desconto : m.valor_multa
                                   )}
@@ -694,11 +694,11 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                   {multasSel.length > 0 && (
                     <div className="flex flex-col gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
                       <div className="flex items-center gap-2">
-                        <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="text-emerald-400 text-[11px] font-semibold flex-1">
+                        <CheckSquare className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span className="text-emerald-700 text-[11px] font-semibold flex-1">
                           {multasSel.length} multa{multasSel.length > 1 ? 's' : ''} selecionada{multasSel.length > 1 ? 's' : ''}
                           {multasSel.length > 1 && (
-                            <span className="ml-1 text-emerald-600 font-mono">
+                            <span className="ml-1 text-emerald-700 font-mono">
                               · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                                   multasSel.reduce((s, m) => s + (m.valor_com_desconto > 0 ? m.valor_com_desconto : m.valor_multa), 0)
                                 )}
@@ -710,7 +710,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                         {multasSel.map(m => (
                           <div key={m.id}
                             className="flex items-center gap-1.5 px-2 py-1 bg-g-900 border border-emerald-500/40 rounded-lg">
-                            <span className="font-mono font-bold text-emerald-300 text-xs">{m.placa}</span>
+                            <span className="font-mono font-bold text-black-400 text-xs">{m.placa}</span>
                             {m.ait && <span className="text-g-500 text-[10px]">{m.ait}</span>}
                             <button type="button" onClick={() => handleMultaSel(m)}
                               className="text-g-600 hover:text-g-400 ml-0.5">
@@ -757,7 +757,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                     onClick={() => { setIncluirInativos(v => !v); setContrato(null) }}
                     className={`flex items-center gap-2 text-xs self-start px-3 py-1.5 rounded-lg border transition-all ${
                       incluirInativos
-                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-600'
                         : 'border-g-800 text-g-600 hover:border-g-700 hover:text-g-400'
                     }`}
                   >
@@ -814,9 +814,9 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                         {faturas.map(f => {
                           const sel = faturaSel?.id === f.id
                           const statusColor = {
-                            Recebido: 'text-emerald-500',
+                            Recebido: 'text-emerald-700',
                             Vencido:  'text-red-400',
-                            Pendente: 'text-amber-400',
+                            Pendente: 'text-amber-600',
                           }[f.status_recebimento] || 'text-g-500'
                           return (
                             <button
@@ -895,10 +895,10 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                         }`}
                       >
                         {todasPlacas
-                          ? <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                          ? <CheckSquare className="w-4 h-4 text-emerald-700 shrink-0" />
                           : <Square className="w-4 h-4 text-g-600 shrink-0" />}
                         <div>
-                          <p className={`text-sm font-semibold ${todasPlacas ? 'text-emerald-300' : 'text-g-300'}`}>
+                          <p className={`text-sm font-semibold ${todasPlacas ? 'text-emerald-700' : 'text-g-300'}`}>
                             Todas as placas do contrato ({veiculos.length})
                           </p>
                           <p className="text-g-600 text-[11px]">
@@ -928,10 +928,10 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                                   }`}
                                 >
                                   {sel
-                                    ? <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    ? <CheckSquare className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                                     : <Square className="w-3.5 h-3.5 text-g-700 shrink-0" />}
                                   <div className="min-w-0">
-                                    <p className={`font-mono font-bold text-xs ${sel ? 'text-emerald-300' : 'text-g-300'}`}>
+                                    <p className={`font-mono font-bold text-xs ${sel ? 'text-emerald-700' : 'text-g-300'}`}>
                                       {v.placa || '—'}
                                     </p>
                                     <p className="text-g-600 text-[10px] truncate">{v.modelo || ''}</p>
@@ -1045,8 +1045,8 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                   <div className="mt-3 grid grid-cols-3 gap-3 px-4 py-3 bg-g-900 border border-g-800 rounded-xl text-center">
                     {[
                       { label: 'A Receber', val: valorNum,    color: 'text-g-200' },
-                      { label: 'Recebido',  val: recebidoNum, color: 'text-emerald-400' },
-                      { label: 'Saldo',     val: saldo, color: saldo > 0 ? 'text-amber-400' : 'text-emerald-400' },
+                      { label: 'Recebido',  val: recebidoNum, color: 'text-emerald-700' },
+                      { label: 'Saldo',     val: saldo, color: saldo > 0 ? 'text-amber-600' : 'text-emerald-700' },
                     ].map(({ label, val, color }) => (
                       <div key={label}>
                         <p className="text-g-600 text-[10px] uppercase tracking-wider mb-0.5">{label}</p>

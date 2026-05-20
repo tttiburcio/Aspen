@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import {
   FileText, Plus, Search, X, Building2, Truck, Receipt,
   Loader2, Edit2, Trash2, AlertTriangle, AlertCircle,
@@ -11,9 +11,9 @@ import ContratoFormModal from '../components/modals/ContratoFormModal'
 import ContratoDetailModal from '../components/modals/ContratoDetailModal'
 
 const STATUS_CLS = {
-  Ativo:     'bg-emerald-500/10 text-emerald-400 border-emerald-700/30',
+  Ativo:     'bg-emerald-500/10 text-emerald-700 border-emerald-700/30',
   Encerrado: 'bg-g-800/50       text-g-500       border-g-700/30',
-  Renovado:  'bg-amber-500/10   text-amber-400   border-amber-700/30',
+  Renovado:  'bg-amber-500/10   text-amber-600   border-amber-700/30',
 }
 const STATUS_LIST = ['Todos', 'Ativo', 'Encerrado', 'Renovado']
 
@@ -44,14 +44,14 @@ function PgtoBadge({ forma }) {
   if (!forma) return <span className="text-g-700 text-[10px]">—</span>
   const cls = forma === 'PIX'
     ? 'bg-indigo-500/10 text-indigo-400 border-indigo-700/30'
-    : 'bg-amber-500/10 text-amber-400 border-amber-700/30'
+    : 'bg-amber-500/10 text-amber-600 border-amber-700/30'
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls}`}>{forma}</span>
 }
 
 function DaysChip({ days }) {
   if (days == null) return null
   if (days === 0) return <span className="text-red-400 text-[10px] font-semibold">Vencido</span>
-  const color = days > 90 ? 'text-emerald-400' : days > 30 ? 'text-amber-400' : 'text-red-400'
+  const color = days > 90 ? 'text-emerald-700' : days > 30 ? 'text-amber-600' : 'text-red-400'
   return <span className={`text-[10px] font-semibold ${color}`}>{days}d</span>
 }
 
@@ -139,7 +139,7 @@ export default function ContratosPage() {
 
       {/* Aviso contratos sem veículo */}
       {semVeiculo > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/25 text-amber-400">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/8 border border-amber-500/25 text-amber-600">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <p className="text-sm">
             <span className="font-bold">{semVeiculo} contrato{semVeiculo !== 1 ? 's' : ''} ativo{semVeiculo !== 1 ? 's' : ''}</span> sem veículos vinculados.
@@ -243,8 +243,8 @@ export default function ContratosPage() {
                       {/* Assinatura */}
                       <td className="px-3 py-3">
                         {c.assinado
-                          ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">✓ Assinado</span>
-                          : <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-400">⚠ Pendente</span>
+                          ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700">✓ Assinado</span>
+                          : <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-500">⚠ Pendente</span>
                         }
                       </td>
                       {/* Pgto */}
@@ -254,7 +254,7 @@ export default function ContratosPage() {
                       {/* Veículos */}
                       <td className="px-3 py-3">
                         {semVeic ? (
-                          <div className="flex items-center gap-1 text-amber-500">
+                          <div className="flex items-center gap-1 text-amber-600">
                             <AlertCircle className="w-3 h-3 shrink-0" />
                             <span className="text-[10px] font-semibold">Sem veículos</span>
                           </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+﻿import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Banknote, AlertCircle, CheckCircle, TrendingUp, Search, X, Loader2, Plus, ArrowUpRight, Trash2, Pencil, Ban } from 'lucide-react'
 import { getReembolsos, getReembolsosSummary, deletarReembolso, atualizarReembolso } from '../utils/api'
@@ -23,10 +23,10 @@ const TIPO_COLOR = {
 }
 
 const STATUS_CLS = {
-  Recebido:  'text-emerald-500',
-  Vencido:   'text-red-400',
+  Recebido:  'text-emerald-700',
+  Vencido:   'text-red-600',
   Cancelado: 'text-g-600',
-  Pendente:  'text-amber-400',
+  Pendente:  'text-amber-600',
 }
 
 function parsePlacas(r) {
@@ -277,7 +277,7 @@ export default function ReembolsosPage({ year }) {
                   </div>
 
                   {/* label mês — altura fixa 20px */}
-                  <span className={`h-5 flex items-center text-[10px] uppercase font-semibold transition-colors ${ativo ? 'text-emerald-400' : 'text-g-500 group-hover:text-g-300'}`}>
+                  <span className={`h-5 flex items-center text-[10px] uppercase font-semibold transition-colors ${ativo ? 'text-emerald-700' : 'text-g-500 group-hover:text-g-300'}`}>
                     {MONTHS_BR[i].slice(0, 3)}
                   </span>
                 </div>
@@ -309,8 +309,8 @@ export default function ReembolsosPage({ year }) {
                     </div>
                     {t.recebido > 0 && (
                       <div className="flex items-center gap-1 mt-0.5">
-                        <ArrowUpRight className="w-2.5 h-2.5 text-emerald-500" />
-                        <span className="text-emerald-600 text-[10px] tabular-nums">
+                        <ArrowUpRight className="w-2.5 h-2.5 text-emerald-700" />
+                        <span className="text-emerald-700 text-[10px] tabular-nums">
                           {brlShort(t.recebido)} recebido ({recPct.toFixed(0)}%)
                         </span>
                       </div>
@@ -425,7 +425,7 @@ export default function ReembolsosPage({ year }) {
                       <td className="td whitespace-nowrap text-g-500 tabular-nums">{r.emissao    ? dateBR(r.emissao)    : '—'}</td>
                       <td className="td whitespace-nowrap text-g-500 tabular-nums">{r.vencimento ? dateBR(r.vencimento) : '—'}</td>
                       <td className="td whitespace-nowrap text-right font-mono font-semibold text-g-200 tabular-nums">{brl(r.valor_reembolso ?? 0)}</td>
-                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-emerald-800 font-semibold">
+                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-emerald-700 font-semibold">
                         {r.valor_recebido != null ? brl(r.valor_recebido) : '—'}
                       </td>
                       <td className="td whitespace-nowrap text-right text-g-500 tabular-nums">
@@ -443,14 +443,14 @@ export default function ReembolsosPage({ year }) {
                           <div className="w-[44px] flex justify-center">
                             {isPendente ? (
                               <button onClick={() => setModalPagar(r)}
-                                className="px-2 py-0.5 text-[11px] font-semibold text-emerald-600 border border-emerald-800/50 rounded hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors">
+                                className="px-2 py-0.5 text-[11px] font-semibold text-black-600 border border-black-800/50 rounded hover:bg-black-500/10 hover:text-emerald-700 transition-colors">
                                 Pago
                               </button>
                             ) : null}
                           </div>
                           {/* Cancelar — ícone */}
                           <button onClick={() => handleCancelar(r)} title="Cancelar"
-                            className={`p-1 rounded transition-colors ${isPendente ? 'text-g-600 hover:text-amber-400 hover:bg-amber-400/10' : 'invisible'}`}
+                            className={`p-1 rounded transition-colors ${isPendente ? 'text-g-600 hover:text-amber-600 hover:bg-amber-400/10' : 'invisible'}`}
                             tabIndex={isPendente ? 0 : -1}>
                             <Ban className="w-3.5 h-3.5" />
                           </button>
@@ -478,7 +478,7 @@ export default function ReembolsosPage({ year }) {
                     Total filtrado ({filtered.length} registros)
                   </td>
                   <td className="td text-right font-mono font-bold text-g-200 tabular-nums">{brl(totalFiltrado)}</td>
-                  <td className="td text-right font-mono font-semibold text-emerald-800 tabular-nums">{brl(recebidoFiltrado)}</td>
+                  <td className="td text-right font-mono font-semibold text-emerald-700 tabular-nums">{brl(recebidoFiltrado)}</td>
                   <td colSpan={4} className="td" />
                 </tr>
               </tfoot>
@@ -520,14 +520,14 @@ export default function ReembolsosPage({ year }) {
                     <td className="td text-right font-mono text-g-300 tabular-nums">{brl(v.total)}</td>
                     <td className="td text-right font-mono text-g-400 tabular-nums">{brl(recebido)}</td>
                     <td className="td text-right font-mono tabular-nums">
-                      <span className={pendente > 0.01 ? 'text-amber-500' : 'text-g-600'}>{brl(pendente)}</span>
+                      <span className={pendente > 0.01 ? 'text-amber-600' : 'text-g-600'}>{brl(pendente)}</span>
                     </td>
                     <td className="td text-right tabular-nums">
                       <div className="flex items-center justify-end gap-2">
                         <div className="w-16 h-1.5 bg-g-800 rounded-full overflow-hidden">
                           <div className="h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className={pct >= 100 ? 'text-emerald-500' : 'text-g-500'}>{pct.toFixed(0)}%</span>
+                        <span className={pct >= 100 ? 'text-emerald-700' : 'text-g-500'}>{pct.toFixed(0)}%</span>
                       </div>
                     </td>
                   </tr>

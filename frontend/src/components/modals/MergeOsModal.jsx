@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { dbMergeSugestoes, dbConfirmarMerge, dbListOs } from '../../utils/api'
@@ -8,7 +8,7 @@ import { X, GitMerge, Loader2, AlertCircle, CheckCircle, ChevronDown, ChevronRig
 
 function MotivoBadge({ motivo }) {
   const labels = {
-    mesmo_id_ord_serv:    { label: 'Mesmo Nº OS',    color: 'bg-amber-50 text-amber-700 border-amber-200' },
+    mesmo_id_ord_serv:    { label: 'Mesmo Nº OS',    color: 'bg-amber-50 text-amber-600 border-amber-200' },
     mesma_placa_fornec_d: { label: 'Placa+Forn+Dia', color: 'bg-blue-50 text-blue-700 border-blue-200' },
     mesma_placa_valor:    { label: 'Placa+Valor',    color: 'bg-purple-50 text-purple-700 border-purple-200' },
   }

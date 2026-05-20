@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Loader2, FileText, Truck, Receipt, Edit2, Calendar, TrendingUp,
@@ -7,13 +7,13 @@ import { getContratoVeiculos, getContratoFaturas, getContratoMetricas } from '..
 import { brl, dateBR } from '../../utils/format'
 
 const STATUS_CLS = {
-  Ativo:     'bg-emerald-500/10 text-emerald-400 border-emerald-700/30',
+  Ativo:     'bg-emerald-500/10 text-emerald-700 border-emerald-700/30',
   Encerrado: 'bg-g-800/50       text-g-500       border-g-700/30',
-  Renovado:  'bg-amber-500/10   text-amber-400   border-amber-700/30',
+  Renovado:  'bg-amber-500/10   text-amber-600   border-amber-700/30',
 }
 const REC_CLS = {
-  Recebido:  'text-emerald-500',
-  Pendente:  'text-amber-400',
+  Recebido:  'text-emerald-700',
+  Pendente:  'text-amber-600',
   Vencido:   'text-red-400',
   Cancelado: 'text-g-600',
 }
@@ -22,7 +22,7 @@ const TABS = ['Veículos', 'Faturas']
 
 function DaysChip({ days }) {
   if (days == null) return null
-  const color = days > 90 ? 'text-emerald-400' : days > 30 ? 'text-amber-400' : 'text-red-400'
+  const color = days > 90 ? 'text-emerald-700' : days > 30 ? 'text-amber-600' : 'text-red-400'
   return (
     <span className={`text-[10px] font-semibold ${color}`}>
       {days === 0 ? 'Vencido' : `${days} dias restantes`}
@@ -87,12 +87,12 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                       pgto === 'PIX'
                         ? 'bg-indigo-500/10 text-indigo-400 border-indigo-700/30'
-                        : 'bg-amber-500/10 text-amber-400 border-amber-700/30'
+                        : 'bg-amber-500/10 text-amber-600 border-amber-700/30'
                     }`}>{pgto}</span>
                   )}
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                     contrato.assinado
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-700/30'
+                      ? 'bg-emerald-500/10 text-emerald-700 border-emerald-700/30'
                       : 'bg-rose-500/10 text-rose-400 border-rose-700/30'
                   }`}>
                     {contrato.assinado ? '✓ Assinado' : '⚠ Não assinado'}
@@ -174,8 +174,8 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                 <div className="grid grid-cols-3 gap-3 p-4 bg-g-900 border border-g-800 rounded-xl">
                   {[
                     { label: 'Total Mensal Contratado', val: metricas.valor_mensal_total, color: 'text-g-100' },
-                    { label: 'Total Medido (período)', val: metricas.total_medido,        color: 'text-emerald-400' },
-                    { label: 'Total Pendente',          val: metricas.total_pendente,     color: 'text-amber-400' },
+                    { label: 'Total Medido (período)', val: metricas.total_medido,        color: 'text-emerald-700' },
+                    { label: 'Total Pendente',          val: metricas.total_pendente,     color: 'text-amber-600' },
                   ].map(({ label, val, color }) => (
                     <div key={label} className="text-center">
                       <p className="text-g-600 text-[10px] uppercase tracking-wider mb-1">{label}</p>
@@ -218,16 +218,16 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                           <td className="px-4 py-3 text-center">
                             {v.medicoes_consumidas != null ? (
                               <span className="inline-flex items-center gap-1 text-[10px]">
-                                <span className="text-emerald-500 font-bold font-mono">{v.medicoes_consumidas}</span>
+                                <span className="text-emerald-700 font-bold font-mono">{v.medicoes_consumidas}</span>
                                 <span className="text-g-700">/</span>
                                 <span className="text-g-400 font-mono font-semibold">{v.medicoes_total ?? (v.medicoes_consumidas + v.medicoes_restantes)}</span>
                               </span>
                             ) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-emerald-400 tabular-nums">
+                          <td className="px-4 py-3 text-right font-mono text-emerald-700 tabular-nums">
                             {v.total_medido != null ? brl(v.total_medido) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-amber-400 tabular-nums">
+                          <td className="px-4 py-3 text-right font-mono text-amber-600 tabular-nums">
                             {v.total_pendente != null ? brl(v.total_pendente) : '—'}
                           </td>
                         </tr>
@@ -252,7 +252,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                           : 0
                         const total = metricas.medicoes_total
                         const pct   = total > 0 ? Math.round((consumidas / total) * 100) : 0
-                        const color = pct >= 80 ? 'text-red-400' : pct >= 50 ? 'text-amber-400' : 'text-emerald-400'
+                        const color = pct >= 80 ? 'text-red-400' : pct >= 50 ? 'text-amber-600' : 'text-emerald-700'
                         return (
                           <>
                             <span className={`font-mono font-bold text-sm ${color}`}>{consumidas}/{total}</span>
@@ -308,7 +308,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                         <td className="px-4 py-3 text-right font-mono text-g-200 font-semibold tabular-nums">
                           {brl(f.valor_locacoes)}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-amber-400 tabular-nums">{brl(f.valor_imposto)}</td>
+                        <td className="px-4 py-3 text-right font-mono text-amber-600 tabular-nums">{brl(f.valor_imposto)}</td>
                         <td className="px-4 py-3 text-right font-mono text-indigo-400 tabular-nums">{brl(f.valor_liquido)}</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`font-semibold ${REC_CLS[f.status_recebimento] || 'text-g-500'}`}>
@@ -316,7 +316,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`font-semibold ${f.status_imposto === 'Pago' ? 'text-emerald-500' : 'text-amber-400'}`}>
+                          <span className={`font-semibold ${f.status_imposto === 'Pago' ? 'text-emerald-700' : 'text-amber-600'}`}>
                             {f.status_imposto}
                           </span>
                         </td>
@@ -327,7 +327,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                     <tr>
                       <td className="px-4 py-3 text-g-500 font-semibold">{faturas.length} fatura{faturas.length !== 1 ? 's' : ''}</td>
                       <td className="px-4 py-3 text-right font-mono font-bold text-g-100 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_locacoes, 0))}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-amber-400 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_imposto, 0))}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-amber-600 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_imposto, 0))}</td>
                       <td className="px-4 py-3 text-right font-mono font-bold text-indigo-400 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_liquido, 0))}</td>
                       <td colSpan={2} />
                     </tr>

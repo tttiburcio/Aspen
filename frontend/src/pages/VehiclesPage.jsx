@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+﻿import { useState, useMemo, useEffect } from 'react'
 import { brl, pct, dias, brlShort } from '../utils/format'
 import VehicleModal from '../components/VehicleModal'
 import VehicleKmBadge from '../components/tracker/VehicleKmBadge'
@@ -16,15 +16,15 @@ import { normalizePlaca } from '../utils/trackerApi'
 const MAPWS_BASE = 'http://localhost:5174'
 
 const STATUS_COLORS = {
-  'ATIVO':      'bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'LOCADO':     'bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'FROTA':      'bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'ATIVO':      'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'LOCADO':     'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'FROTA':      'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'ADM':        'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'ADMINISTRAÇÃO': 'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'ADMINISTRACAO': 'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'VENDIDO':    'bg-gray-50 text-gray-900 border border-gray-200 dark:bg-gray-900/40 dark:text-gray-300 dark:border-gray-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'DESATIVADO': 'bg-red-50 text-red-900 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'MANUT':      'bg-amber-50 text-amber-900 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'MANUT':      'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-600 dark:border-amber-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'INATIVO':    'bg-red-50 text-red-900 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'PARADO':     'bg-red-50 text-red-900 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
 }
@@ -62,10 +62,10 @@ const COLUMNS = [
   { key: 'receita_total',      label: 'Receita',      align: 'left',  fmt: v => <span className="font-mono text-g-300 text-sm font-semibold tabular-nums">{brl(v)}</span> },
   { key: 'custo_total',        label: 'Custo',        align: 'left',  fmt: v => <span className="font-mono text-g-500 text-sm tabular-nums">{brl(v)}</span> },
   { key: 'margem',             label: 'Margem',       align: 'left',  fmt: v => (
-    <span className={`font-mono font-semibold text-sm tabular-nums ${v >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{brl(v)}</span>
+    <span className={`font-mono font-semibold text-sm tabular-nums ${v >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>{brl(v)}</span>
   )},
   { key: 'margem_pct',         label: '% Margem',     align: 'left',  fmt: v => (
-    <span className={`text-sm font-bold tabular-nums ${v >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{pct(v)}</span>
+    <span className={`text-sm font-bold tabular-nums ${v >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>{pct(v)}</span>
   )},
   { key: 'dias_trabalhado',    label: 'Dias Trab.',   align: 'left',  fmt: v => <span className="text-g-500 text-sm tabular-nums">{dias(v)}</span> },
   { key: 'receita_por_dia',    label: 'R$/Dia',       align: 'left',  fmt: v => v > 0
@@ -302,8 +302,8 @@ export default function VehiclesPage({
                   onClick={() => handleShowOnly(showOnly === 'idle' ? 'all' : 'idle')}
                   className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${
                     showOnly === 'idle'
-                      ? 'bg-amber-500/20 text-amber-400'
-                      : 'text-g-600 hover:text-amber-400'
+                      ? 'bg-amber-500/20 text-amber-600'
+                      : 'text-g-600 hover:text-amber-600'
                   }`}
                 >
                   <ZapOff className="w-3.5 h-3.5" />
@@ -327,7 +327,7 @@ export default function VehiclesPage({
                 onClick={() => handleShowOnly(o.val)}
                 className={`px-3 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide transition-all ${
                   showOnly === o.val
-                    ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-sm'
+                    ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 shadow-sm'
                     : 'text-g-500 hover:text-g-200'
                 }`}
               >
@@ -368,13 +368,13 @@ export default function VehiclesPage({
         </div>
         <div className="card p-3.5 flex flex-col gap-1">
           <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">Margem Filtrada</span>
-          <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
             {brl(totals.margem)}
           </span>
         </div>
         <div className="card p-3.5 flex flex-col gap-1">
           <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">% Margem</span>
-          <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+          <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
             {totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
           </span>
         </div>
@@ -418,7 +418,7 @@ export default function VehiclesPage({
                             <span className="inline-flex items-center gap-1.5">
                               <span className="font-mono font-bold text-g-50 text-[15px] tracking-wide">{v.placa}</span>
                               {vkm?.kmDia > HIGH_USAGE_THRESHOLD && <Flame className="w-3 h-3 text-red-400" />}
-                              {idlePlacas.has(normalizePlaca(v.placa)) && <ZapOff className="w-3 h-3 text-amber-500" />}
+                              {idlePlacas.has(normalizePlaca(v.placa)) && <ZapOff className="w-3 h-3 text-amber-600" />}
                             </span>
                           )
                           : col.fmt(v[col.key])}
@@ -452,12 +452,12 @@ export default function VehiclesPage({
                     <span className="font-mono text-g-500 tabular-nums text-sm">{brl(totals.custo_total)}</span>
                   </td>
                   <td className="td">
-                    <span className={`font-mono font-bold tabular-nums text-sm ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <span className={`font-mono font-bold tabular-nums text-sm ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
                       {brl(totals.margem)}
                     </span>
                   </td>
                   <td className="td">
-                    <span className={`text-sm font-bold tabular-nums ${totals.margem >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <span className={`text-sm font-bold tabular-nums ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
                       {totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
                     </span>
                   </td>

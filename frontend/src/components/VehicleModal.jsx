@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getVehicle } from '../utils/api'
 import { brl, pct, dias, brlShort, num, dateBR } from '../utils/format'
@@ -160,7 +160,7 @@ export default function VehicleModal({ placa, year, onClose, trackerOnline = nul
                 <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="text-3xl font-black text-g-50 tracking-tighter">{placa}</h2>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-widest border ${
-                    info?.status === 'Frota' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-g-800 text-g-400 border-g-700'
+                    info?.status === 'Frota' ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : 'bg-g-800 text-g-400 border-g-700'
                   }`}>
                     {info?.status}
                   </span>
@@ -179,7 +179,7 @@ export default function VehicleModal({ placa, year, onClose, trackerOnline = nul
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-g-400 font-medium">
                   {info?.valor_tabela > 0 && <span>Tabela FIPE: <strong className="text-g-100">{brl(info.valor_tabela)}</strong></span>}
                   {info?.valor_implemento > 0 && <span>Valor Implemento: <strong className="text-g-100">{brl(info.valor_implemento)}</strong></span>}
-                  {info?.valor_total > 0 && <span>Valor Total Ativo: <strong className="text-emerald-400">{brl(info.valor_total)}</strong></span>}
+                  {info?.valor_total > 0 && <span>Valor Total Ativo: <strong className="text-emerald-700">{brl(info.valor_total)}</strong></span>}
                 </div>
               </>
             )}
@@ -311,7 +311,7 @@ export default function VehicleModal({ placa, year, onClose, trackerOnline = nul
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-g-600 text-xs uppercase tracking-widest mb-1.5">Margem Líquida</p>
-                      <h3 className={`text-3xl font-extrabold font-mono tabular-nums ${isLucr ? 'text-emerald-500' : 'text-red-500'}`}>
+                      <h3 className={`text-3xl font-extrabold font-mono tabular-nums ${isLucr ? 'text-emerald-700' : 'text-red-500'}`}>
                         {brl(k.margem)}
                       </h3>
                       <p className={`text-sm mt-1.5 ${isLucr ? 'text-g-400' : 'text-red-400'}`}>
@@ -330,7 +330,7 @@ export default function VehicleModal({ placa, year, onClose, trackerOnline = nul
                 <div>
                   <SectionTitle icon={DollarSign}>Receita</SectionTitle>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    <MiniKPI label="Total"     value={brl(k.receita_total)}     color="text-emerald-600" icon={DollarSign} />
+                    <MiniKPI label="Total"     value={brl(k.receita_total)}     color="text-emerald-700" icon={DollarSign} />
                     <MiniKPI label="Locação"   value={brl(k.receita_locacao)}   color="text-g-200"       icon={FileText} iconColor="text-g-500" />
                     <MiniKPI label="Reembolso" value={brl(k.receita_reembolso)} color="text-g-200"       icon={ChevronRight} iconColor="text-g-500" />
                   </div>
@@ -343,7 +343,7 @@ export default function VehicleModal({ placa, year, onClose, trackerOnline = nul
                     <MiniKPI label="Manutenção"   value={brl(k.custo_manutencao)}   color="text-orange-400" icon={Wrench} />
                     <MiniKPI label="Seguro"       value={brl(k.custo_seguro)}       color="text-red-400"    icon={Shield} />
                     <MiniKPI label="Impostos"     value={brl(k.custo_impostos)}     color="text-purple-400" icon={FileText} />
-                    <MiniKPI label="Rastreamento" value={brl(k.custo_rastreamento)} color="text-amber-400"  icon={MapPin} />
+                    <MiniKPI label="Rastreamento" value={brl(k.custo_rastreamento)} color="text-amber-600"  icon={MapPin} />
                   </div>
                   <div className="mt-2 bg-g-950 rounded-lg p-3 border border-g-800 flex justify-between items-center">
                     <span className="text-g-600 text-xs uppercase tracking-wide font-medium">Custo Total</span>
@@ -356,11 +356,11 @@ export default function VehicleModal({ placa, year, onClose, trackerOnline = nul
                   <SectionTitle icon={Clock}>Operação</SectionTitle>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                     <MiniKPI label="Dias Trabalhados" value={dias(k.dias_trabalhado)} icon={Calendar} iconColor="text-g-500" />
-                    <MiniKPI label="Dias Parado"      value={dias(k.dias_parado)} icon={AlertTriangle} iconColor="text-g-500" color="text-emerald-600" />
-                    <MiniKPI label="Utilização"       value={pct(k.dias_trabalhado / (k.dias_trabalhado + k.dias_parado) * 100)} icon={Percent} iconColor="text-g-500" color="text-emerald-600" />
+                    <MiniKPI label="Dias Parado"      value={dias(k.dias_parado)} icon={AlertTriangle} iconColor="text-g-500" color="text-emerald-700" />
+                    <MiniKPI label="Utilização"       value={pct(k.dias_trabalhado / (k.dias_trabalhado + k.dias_parado) * 100)} icon={Percent} iconColor="text-g-500" color="text-emerald-700" />
                     <MiniKPI label="Receita / Dia"    value={brlShort(k.receita_por_dia)} color="text-g-200" />
                     <MiniKPI label="Custo / Dia"      value={brlShort(k.custo_por_dia)}   color="text-red-400" />
-                    <MiniKPI label="Margem / Dia"     value={brlShort(k.margem_por_dia)}  color="text-emerald-600" />
+                    <MiniKPI label="Margem / Dia"     value={brlShort(k.margem_por_dia)}  color="text-emerald-700" />
                   </div>
                 </div>
 

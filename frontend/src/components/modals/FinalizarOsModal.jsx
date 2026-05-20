@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { X, Loader2, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react'
@@ -281,7 +281,7 @@ export default function FinalizarOsModal({ os, onClose, onSaved, editMode = fals
         <div className="flex items-center justify-between px-6 py-4 border-b border-g-800 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-emerald-50/20 border border-emerald-500/30 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-700" />
             </div>
             <div>
               <h2 className="text-g-200 font-semibold text-sm">{editMode ? 'Editar OS' : 'Finalizar OS'} · {os.placa}</h2>
@@ -299,7 +299,7 @@ export default function FinalizarOsModal({ os, onClose, onSaved, editMode = fals
             <div key={s.key} className="flex items-center">
               <span className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
                 step === s.key ? 'bg-g-100 text-white' :
-                steps.findIndex(x => x.key === step) > i ? 'text-emerald-500' : 'text-g-700'
+                steps.findIndex(x => x.key === step) > i ? 'text-emerald-700' : 'text-g-700'
               }`}>{s.label}</span>
               {i < steps.length - 1 && <div className="w-8 h-px bg-g-800 mx-1" />}
             </div>
@@ -351,9 +351,9 @@ export default function FinalizarOsModal({ os, onClose, onSaved, editMode = fals
               </div>
             ) : errosValidacao.length === 0 ? (
               <div className="bg-emerald-50/10 border border-emerald-500/30 rounded-xl p-5 flex items-center gap-3">
-                <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
+                <CheckCircle className="w-6 h-6 text-emerald-700 shrink-0" />
                 <div>
-                  <p className="text-emerald-400 font-semibold text-sm">OS válida — sem inconsistências</p>
+                  <p className="text-emerald-700 font-semibold text-sm">OS válida — sem inconsistências</p>
                   <p className="text-g-600 text-xs mt-0.5">Todos os itens vinculados, valores e parcelas consistentes.</p>
                 </div>
               </div>

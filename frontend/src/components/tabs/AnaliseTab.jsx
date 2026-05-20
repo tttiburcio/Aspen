@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Loader2, X, Truck } from 'lucide-react'
 import { getImplementoAnalysis } from '../../utils/api'
 import { brl, brlShort, num } from '../../utils/format'
@@ -119,7 +119,7 @@ export default function AnaliseTab({ year }) {
                               {implSel.intervalos_km.map((iv, i) => (
                                 <tr key={i} className="border-b border-g-900 hover:bg-g-850">
                                   <td className="py-1.5 pr-3 text-g-200 font-semibold">{iv.sistema}</td>
-                                  <td className="py-1.5 px-2 text-right font-mono text-emerald-400 font-bold">{num(iv.intervalo_medio)} km</td>
+                                  <td className="py-1.5 px-2 text-right font-mono text-emerald-700 font-bold">{num(iv.intervalo_medio)} km</td>
                                   <td className="py-1.5 px-2 text-right font-mono text-g-500">{num(iv.intervalo_min)}</td>
                                   <td className="py-1.5 px-2 text-right font-mono text-g-500">{num(iv.intervalo_max)}</td>
                                   <td className="py-1.5 pl-2 text-right text-g-600">{iv.amostras}</td>
@@ -171,7 +171,7 @@ export default function AnaliseTab({ year }) {
                                   <td className="py-1.5 px-2 text-right text-g-400 font-mono">{s.count}</td>
                                   <td className="py-1.5 px-2 text-right font-mono text-g-200 font-bold">{brl(s.custo)}</td>
                                   <td className="py-1.5 px-2 text-right font-mono text-g-400">{s.count > 0 ? brlShort(s.custo / s.count) : '—'}</td>
-                                  <td className="py-1.5 pl-2 text-right font-mono text-emerald-400">{iv ? `${num(iv.intervalo_medio)} km` : '—'}</td>
+                                  <td className="py-1.5 pl-2 text-right font-mono text-emerald-700">{iv ? `${num(iv.intervalo_medio)} km` : '—'}</td>
                                 </tr>
                               )
                             })}
@@ -198,7 +198,7 @@ export default function AnaliseTab({ year }) {
                                   .map((iv, i) => (
                                     <tr key={i} className="border-b border-g-900 hover:bg-g-850">
                                       <td className="py-1.5 pr-4 text-g-200 font-semibold">{iv.sistema}</td>
-                                      <td className="py-1.5 pl-2 text-right font-mono text-emerald-400 font-bold">{num(iv.por_placa[implPlaca])} km</td>
+                                      <td className="py-1.5 pl-2 text-right font-mono text-emerald-700 font-bold">{num(iv.por_placa[implPlaca])} km</td>
                                     </tr>
                                   ))}
                               </tbody>

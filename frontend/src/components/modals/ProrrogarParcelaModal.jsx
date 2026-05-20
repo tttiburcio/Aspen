@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+﻿import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { CalendarClock, X, CheckCircle, AlertTriangle, Ban, Loader2 } from 'lucide-react'
 import { dbAtualizarParcela } from '../../utils/api'
@@ -120,7 +120,7 @@ export default function ProrrogarParcelaModal({ parcela: p, onClose, onSaved }) 
                   onClick={() => setModo('prorrogada_isenta')}
                   className="flex items-center gap-3 px-4 py-3 bg-g-850 border border-g-800 rounded-xl hover:border-emerald-500/40 hover:bg-emerald-50/5 transition-colors text-left"
                 >
-                  <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
                   <div>
                     <p className="text-g-300 text-sm font-medium">Sim, isenta de encargos</p>
                     <p className="text-g-600 text-xs">Nova data, sem multa ou juros</p>
@@ -130,7 +130,7 @@ export default function ProrrogarParcelaModal({ parcela: p, onClose, onSaved }) 
                   onClick={() => setModo('prorrogada_encargos')}
                   className="flex items-center gap-3 px-4 py-3 bg-g-850 border border-g-800 rounded-xl hover:border-amber-500/40 hover:bg-amber-50/5 transition-colors text-left"
                 >
-                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                   <div>
                     <p className="text-g-300 text-sm font-medium">Sim, com encargos</p>
                     <p className="text-g-600 text-xs">Multa e/ou juros serão aplicados</p>
@@ -215,7 +215,7 @@ export default function ProrrogarParcelaModal({ parcela: p, onClose, onSaved }) 
                       </div>
                     )
                   })()}
-                  <div className="flex justify-between text-g-600 border-t border-g-800 pt-1 mt-1"><span>Valor atualizado</span><span className="font-mono font-semibold text-amber-400">{brl(valorEncargos)}</span></div>
+                  <div className="flex justify-between text-g-600 border-t border-g-800 pt-1 mt-1"><span>Valor atualizado</span><span className="font-mono font-semibold text-amber-600">{brl(valorEncargos)}</span></div>
                 </div>
               )}
             </div>

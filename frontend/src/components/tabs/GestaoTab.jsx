@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+﻿import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import html2pdf from 'html2pdf.js'
 import toast from 'react-hot-toast'
@@ -216,7 +216,7 @@ export default function GestaoTab({ year }) {
         </div>
         <div className="card p-4 flex items-center gap-3">
           <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <CheckCircle className="w-4 h-4 text-emerald-700" />
           </div>
           <div>
             <p className="text-g-600 text-xs uppercase tracking-wider">Finalizadas (total)</p>
@@ -388,7 +388,7 @@ export default function GestaoTab({ year }) {
                         <div className="flex flex-col items-end gap-1.5">
                           <StatusBadge status={o.status_os} />
                           {dias !== null && (
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ${dias > 30 ? 'text-red-500' : dias > 7 ? 'text-amber-500' : 'text-g-500'}`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${dias > 30 ? 'text-red-500' : dias > 7 ? 'text-amber-600' : 'text-g-500'}`}>
                               {dias} dias na oficina
                             </span>
                           )}

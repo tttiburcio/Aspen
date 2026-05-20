@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+﻿import { useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Loader2 } from 'lucide-react'
 import { getReembolsos } from '../../utils/api'
@@ -6,10 +6,10 @@ import { brl, dateBR } from '../../utils/format'
 import { MONTHS_BR } from '../../constants/maintenanceStatus'
 
 const STATUS_CLS = {
-  Recebido:  'text-emerald-500',
+  Recebido:  'text-emerald-700',
   Vencido:   'text-red-400',
   Cancelado: 'text-g-600',
-  Pendente:  'text-amber-400',
+  Pendente:  'text-amber-600',
 }
 
 export default function ReembolsosMesModal({ year, mes, emissora, onClose }) {
@@ -78,7 +78,7 @@ export default function ReembolsosMesModal({ year, mes, emissora, onClose }) {
                     <td className="td whitespace-nowrap text-g-500 tabular-nums text-xs">{r.emissao ? dateBR(r.emissao) : '—'}</td>
                     <td className="td whitespace-nowrap text-g-500 tabular-nums text-xs">{r.vencimento ? dateBR(r.vencimento) : '—'}</td>
                     <td className="td whitespace-nowrap text-right font-mono font-semibold text-g-200 tabular-nums text-xs">{brl(r.valor_reembolso ?? 0)}</td>
-                    <td className="td whitespace-nowrap text-right font-mono text-emerald-800 font-semibold tabular-nums text-xs">
+                    <td className="td whitespace-nowrap text-right font-mono text-emerald-700 font-semibold tabular-nums text-xs">
                       {r.valor_recebido != null ? brl(r.valor_recebido) : '—'}
                     </td>
                     <td className="td whitespace-nowrap">
@@ -93,7 +93,7 @@ export default function ReembolsosMesModal({ year, mes, emissora, onClose }) {
                 <tr>
                   <td colSpan={6} className="td text-g-600 uppercase text-xs font-semibold tracking-wider">Total</td>
                   <td className="td text-right font-mono font-bold text-g-200 tabular-nums">{brl(total)}</td>
-                  <td className="td text-right font-mono font-bold text-emerald-800 tabular-nums">{brl(recebido)}</td>
+                  <td className="td text-right font-mono font-bold text-emerald-700 tabular-nums">{brl(recebido)}</td>
                   <td className="td" />
                 </tr>
               </tfoot>

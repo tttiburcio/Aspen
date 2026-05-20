@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Loader2, Receipt, Landmark } from 'lucide-react'
 import { patchFatura } from '../../utils/api'
@@ -54,8 +54,8 @@ export default function PagarFaturaModal({ fatura, mode, onClose, onSaved }) {
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-g-800">
           <div className="flex items-center gap-2">
             {isRec
-              ? <Receipt className="w-4 h-4 text-emerald-500" />
-              : <Landmark className="w-4 h-4 text-amber-400" />}
+              ? <Receipt className="w-4 h-4 text-emerald-700" />
+              : <Landmark className="w-4 h-4 text-amber-600" />}
             <h3 className="text-g-100 font-semibold text-sm">
               {isRec ? 'Registrar Recebimento' : 'Registrar Pagamento de Imposto'}
             </h3>
@@ -76,7 +76,7 @@ export default function PagarFaturaModal({ fatura, mode, onClose, onSaved }) {
                 Valor a receber: <span className="font-mono font-semibold text-g-200">{brl(fatura.valor_locacoes)}</span>
               </p>
             : <p className="text-g-400 text-xs mt-1">
-                Imposto (11,33%): <span className="font-mono font-semibold text-amber-300">{brl(fatura.valor_imposto)}</span>
+                Imposto (11,33%): <span className="font-mono font-semibold text-amber-600">{brl(fatura.valor_imposto)}</span>
               </p>}
         </div>
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle, Loader2, Trash2, Eraser } from 'lucide-react'
+﻿import { AlertTriangle, CheckCircle, Loader2, Trash2, Eraser } from 'lucide-react'
 import { brl } from '../../utils/format'
 import { parseMoney, itemMatchesTipo, nfLabel } from '../../utils/finalizarOsUtils'
 import { useCompanies } from '../../contexts/CompanyContext'
@@ -61,7 +61,7 @@ export default function GerarNfsFlow({
         return nf.is_saved ? (
           <div key={ni} className="border border-g-800 rounded-xl bg-g-850 px-4 py-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <span className="text-emerald-500 bg-emerald-500/10 p-1.5 rounded-lg"><CheckCircle className="w-4 h-4" /></span>
+              <span className="text-emerald-700 bg-emerald-500/10 p-1.5 rounded-lg"><CheckCircle className="w-4 h-4" /></span>
               <div>
                 <span className="text-g-200 font-medium text-sm block">{nfLabel(nf, ni)} {nf.numero_nf ? `· ${nf.numero_nf}` : ''}</span>
                 <span className="text-g-500 text-xs">{nf.fornecedor || 'Sem fornecedor'} · {brl(nf.valor_total_nf)}</span>
@@ -83,7 +83,7 @@ export default function GerarNfsFlow({
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               ) : (
-                <button type="button" onClick={() => clearNf(ni)} className="text-g-600 hover:text-amber-500 transition-colors flex items-center gap-1.5" title="Limpar NF">
+                <button type="button" onClick={() => clearNf(ni)} className="text-g-600 hover:text-amber-600 transition-colors flex items-center gap-1.5" title="Limpar NF">
                   <Eraser className="w-3.5 h-3.5" />
                   <span className="text-[10px] font-medium uppercase tracking-wider">Limpar</span>
                 </button>
@@ -183,7 +183,7 @@ export default function GerarNfsFlow({
                     <div className="flex justify-end mt-2 text-xs gap-4">
                       <span className="text-g-600">Soma itens: <span className="font-mono text-g-400">{brl(somaItens)}</span></span>
                       {difereItens && (
-                        <span className="text-amber-500 flex items-center gap-1">
+                        <span className="text-amber-600 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           Difere {brl(Math.abs(somaItens - valorNf))} do valor NF
                         </span>
@@ -248,7 +248,7 @@ export default function GerarNfsFlow({
                   <div className="flex justify-end gap-4 mt-2 text-xs">
                     <span className="text-g-600">Total parcelas: <span className="font-mono text-g-400">{brl(somaParcelas)}</span></span>
                     {difereParcelas && (
-                      <span className="text-amber-500 flex items-center gap-1">
+                      <span className="text-amber-600 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
                         Difere {brl(Math.abs(somaParcelas - valorNf))} do valor NF
                       </span>
@@ -259,7 +259,7 @@ export default function GerarNfsFlow({
 
               <div className="mt-4 pt-4 border-t border-g-800 flex justify-end">
                 <button type="button" onClick={() => salvarNfEspecifica(ni)} disabled={saving}
-                  className="px-4 py-2 rounded-lg bg-emerald-600/20 text-emerald-500 text-sm hover:bg-emerald-600/30 font-medium transition-colors flex items-center gap-2">
+                  className="px-4 py-2 rounded-lg bg-emerald-600/20 text-emerald-700 text-sm hover:bg-emerald-600/30 font-medium transition-colors flex items-center gap-2">
                   {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Salvar NF
                 </button>

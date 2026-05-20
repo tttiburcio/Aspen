@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CreditCard, X, Wrench, CalendarClock, RotateCcw, Loader2 } from 'lucide-react'
 import { dbAtualizarParcela } from '../../utils/api'
@@ -141,7 +141,7 @@ export default function DetalheParcelaModal({ parcela: p, onClose, onSaved }) {
           )}
 
           {p._isSintetica && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-amber-400 text-xs">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-amber-600 text-xs">
               Esta entrada representa o total da NF. Crie parcelas explícitas na OS para registrar pagamentos e prorrogações.
             </div>
           )}

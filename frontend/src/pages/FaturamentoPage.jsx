@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+﻿import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   FileText, CheckCircle, AlertCircle, TrendingDown, Search, X, Loader2, ChevronDown, Plus,
 } from 'lucide-react'
@@ -14,14 +14,14 @@ import toast from 'react-hot-toast'
 
 // ── Status styles ─────────────────────────────────────────────────────
 const REC_CLS = {
-  Recebido:  'text-emerald-500 bg-emerald-500/10 border-emerald-700/30',
-  Pendente:  'text-amber-400  bg-amber-400/10   border-amber-700/30',
+  Recebido:  'text-emerald-700 bg-emerald-500/10 border-emerald-700/30',
+  Pendente:  'text-amber-600  bg-amber-400/10   border-amber-700/30',
   Vencido:   'text-red-400    bg-red-400/10     border-red-700/30',
   Cancelado: 'text-g-600      bg-g-800/50       border-g-700/30',
 }
 const IMP_CLS = {
-  Pago:    'text-emerald-500 bg-emerald-500/10 border-emerald-700/30',
-  Pendente:'text-amber-400  bg-amber-400/10   border-amber-700/30',
+  Pago:    'text-emerald-700 bg-emerald-500/10 border-emerald-700/30',
+  Pendente:'text-amber-600  bg-amber-400/10   border-amber-700/30',
   Isento:  'text-g-500      bg-g-800/50       border-g-700/30',
 }
 
@@ -250,7 +250,7 @@ export default function FaturamentoPage({ year }) {
                     </div>
                     {isOpen && (
                       <div className="mt-1.5 pl-2 border-l border-g-800 flex flex-col gap-0.5">
-                        <span className="text-g-500 text-[10px]">Recebido: <span className="font-mono text-emerald-600">{brlShort(e.recebido)}</span> <span className="text-g-700">({recPct.toFixed(0)}%)</span></span>
+                        <span className="text-g-500 text-[10px]">Recebido: <span className="font-mono text-emerald-700">{brlShort(e.recebido)}</span> <span className="text-g-700">({recPct.toFixed(0)}%)</span></span>
                         <span className="text-g-500 text-[10px]">Imposto: <span className="font-mono text-amber-600">{brlShort(e.imposto)}</span></span>
                         <span className="text-g-500 text-[10px]">Líquido: <span className="font-mono text-g-400">{brlShort(e.locacoes - e.imposto)}</span></span>
                       </div>
@@ -373,10 +373,10 @@ export default function FaturamentoPage({ year }) {
                       <td className="td whitespace-nowrap text-right font-mono font-semibold text-g-200 tabular-nums">
                         {brl(r.valor_locacoes)}
                       </td>
-                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-amber-500">
+                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-amber-600">
                         {brl(r.valor_imposto)}
                         {r.encargo_imposto > 0 && (
-                          <span className="block text-[10px] text-amber-700 tabular-nums">+{brl(r.encargo_imposto)} enc.</span>
+                          <span className="block text-[10px] text-amber-600 tabular-nums">+{brl(r.encargo_imposto)} enc.</span>
                         )}
                       </td>
                       <td className="td whitespace-nowrap text-right text-g-600 tabular-nums">
@@ -385,7 +385,7 @@ export default function FaturamentoPage({ year }) {
                       <td className="td whitespace-nowrap text-right font-mono tabular-nums text-indigo-400">
                         {brl(r.valor_liquido)}
                       </td>
-                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-emerald-600">
+                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-emerald-700">
                         {r.valor_recebido > 0 ? brl(r.valor_recebido) : '—'}
                       </td>
                       <td className="td whitespace-nowrap">
@@ -404,7 +404,7 @@ export default function FaturamentoPage({ year }) {
                           {isPendRec && (
                             <button
                               onClick={() => setModalPagar({ fatura: r, mode: 'recebimento' })}
-                              className="px-2 py-0.5 text-[11px] font-semibold text-emerald-600 border border-emerald-800/50 rounded hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors whitespace-nowrap"
+                              className="px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-800/50 rounded hover:bg-emerald-500/10 hover:text-emerald-700 transition-colors whitespace-nowrap"
                             >
                               Receber
                             </button>
@@ -412,7 +412,7 @@ export default function FaturamentoPage({ year }) {
                           {isPendImp && (
                             <button
                               onClick={() => setModalPagar({ fatura: r, mode: 'imposto' })}
-                              className="px-2 py-0.5 text-[11px] font-semibold text-amber-500 border border-amber-700/40 rounded hover:bg-amber-500/10 hover:text-amber-400 transition-colors whitespace-nowrap"
+                              className="px-2 py-0.5 text-[11px] font-semibold text-amber-600 border border-amber-700/40 rounded hover:bg-amber-500/10 hover:text-amber-600 transition-colors whitespace-nowrap"
                             >
                               Imp.
                             </button>
@@ -429,10 +429,10 @@ export default function FaturamentoPage({ year }) {
                     Total filtrado ({filtered.length})
                   </td>
                   <td className="td text-right font-mono font-bold text-g-200 tabular-nums">{brl(totalFiltrado)}</td>
-                  <td className="td text-right font-mono font-bold text-amber-500 tabular-nums">{brl(impostoFiltrado)}</td>
+                  <td className="td text-right font-mono font-bold text-amber-600 tabular-nums">{brl(impostoFiltrado)}</td>
                   <td className="td" />
                   <td className="td text-right font-mono font-bold text-indigo-400 tabular-nums">{brl(liquidoFiltrado)}</td>
-                  <td className="td text-right font-mono font-bold text-emerald-600 tabular-nums">{brl(recebidoFiltrado)}</td>
+                  <td className="td text-right font-mono font-bold text-emerald-700 tabular-nums">{brl(recebidoFiltrado)}</td>
                   <td colSpan={3} className="td" />
                 </tr>
               </tfoot>
