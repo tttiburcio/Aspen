@@ -474,43 +474,34 @@ def list_multas(
             if status == "Recebido":
                 reimb_map[mid]["status"] = "Recebido"
 
-        # 1) Campo direto (legado)
-        reimb_rows = (
+        # Busca todos os reembolsos relevantes de uma vez
+        all_reimb = (
             db.query(
                 models.Reembolso.id_multa,
-                models.Reembolso.valor_recebido,
-                models.Reembolso.status_recebimento,
-            )
-            .filter(
-                models.Reembolso.id_multa.in_(mids),
-                models.Reembolso.status_recebimento.in_(["Recebido", "Pendente"]),
-            )
-            .all()
-        )
-        for r in reimb_rows:
-            _add_to_map(r[0], r[1], r[2])
-
-        # 2) ids_multa_json (múltiplas multas por reembolso)
-        json_rows = (
-            db.query(
                 models.Reembolso.ids_multa_json,
                 models.Reembolso.valor_recebido,
                 models.Reembolso.status_recebimento,
             )
             .filter(
-                models.Reembolso.ids_multa_json.isnot(None),
                 models.Reembolso.status_recebimento.in_(["Recebido", "Pendente"]),
             )
             .all()
         )
-        for ids_json, valor, status in json_rows:
-            try:
-                ids = _json.loads(ids_json)
-            except Exception:
-                continue
-            for mid in ids:
-                if mid in mids_set:
-                    _add_to_map(mid, valor, status)
+
+        for id_multa, ids_json, valor, status in all_reimb:
+            # Reembolso com múltiplas multas — usa ids_multa_json, ignora id_multa
+            if ids_json:
+                try:
+                    ids = [i for i in _json.loads(ids_json) if i in mids_set]
+                except Exception:
+                    ids = []
+                if ids:
+                    valor_por_multa = float(valor or 0) / len(_json.loads(ids_json))
+                    for mid in ids:
+                        _add_to_map(mid, valor_por_multa, status)
+            # Reembolso legado (campo direto)
+            elif id_multa and id_multa in mids_set:
+                _add_to_map(id_multa, valor, status)
 
     return [_enrich_multa(r, frota_map, emp_map, cliente_map, reimb_map) for r in rows]
 
