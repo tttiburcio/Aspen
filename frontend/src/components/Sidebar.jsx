@@ -1,4 +1,4 @@
-import { LayoutDashboard, Truck, Wrench, BarChart2, Banknote, ChevronDown, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Truck, Wrench, BarChart2, Banknote, Receipt, FileText, FileWarning, ChevronDown, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
 const LEGENDS = {
@@ -32,6 +32,23 @@ const LEGENDS = {
     { color: '#22c55e', label: 'Revisão' },
     { color: '#f97316', label: 'Implemento' },
   ],
+  faturamento: [
+    { color: '#22c55e', label: 'Faturamento bruto' },
+    { color: '#f59e0b', label: 'Imposto (11,33%)' },
+    { color: '#6366f1', label: 'Valor líquido' },
+    { color: '#10b981', label: 'Recebido' },
+  ],
+  contratos: [
+    { color: '#22c55e', label: 'Ativo' },
+    { color: '#f59e0b', label: 'Renovado' },
+    { color: '#94a3b8', label: 'Encerrado' },
+  ],
+  debitos: [
+    { color: '#f59e0b', label: 'IPVA' },
+    { color: '#f97316', label: 'Licenciamento' },
+    { color: '#ef4444', label: 'Multas / NIC' },
+    { color: '#22c55e', label: 'Pago' },
+  ],
 }
 
 const NAV = [
@@ -40,6 +57,9 @@ const NAV = [
   { key: 'maintenance',  label: 'Manutenção',   icon: Wrench },
   { key: 'analysis',     label: 'Intervalos',   icon: BarChart2 },
   { key: 'reembolsos',   label: 'Reembolsos',   icon: Banknote },
+  { key: 'faturamento',  label: 'Faturamento',  icon: Receipt   },
+  { key: 'contratos',    label: 'Contratos',    icon: FileText  },
+  { key: 'debitos',      label: 'Débitos',      icon: FileWarning },
 ]
 
 export default function Sidebar({ page, setPage, years, year, setYear, isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) {

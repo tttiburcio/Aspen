@@ -98,7 +98,7 @@ def finalizar_manutencao(
         raise HTTPException(404, "Manutenção não encontrada")
 
     # Atualiza campos da OS
-    for field in ("id_ord_serv", "total_os", "data_execucao", "empresa", "categoria",
+    for field in ("id_ord_serv", "total_os", "data_execucao", "categoria",
                   "qtd_itens", "prox_km", "prox_data", "km",
                   "posicao_pneu", "qtd_pneu", "espec_pneu", "marca_pneu", "manejo_pneu"):
         val = getattr(payload, field, None)
@@ -170,15 +170,22 @@ def listar_parcelas(year: int = None, empresa: str = None, db: Session = Depends
                 os_obj = nf.os
         if not os_obj and p.manutencao_id:
             manut = p.manutencao
-        if not os_obj and not manut:
-            continue
-
         d = {c.name: getattr(p, c.name) for c in p.__table__.columns}
+
+        if not os_obj and not manut:
+            # Parcela órfã (sem NF nem manutencao_id) — inclui só dados da parcela
+            d["placa"] = d["modelo"] = d["empresa"] = d["empresa_nome"] = None
+            d["id_contrato"] = d["fornecedor_os"] = d["fornecedor"] = None
+            d["descricao"] = d["sistema"] = d["id_ord_serv"] = d["nota"] = None
+            d["data_execucao"] = d["contrato_nome"] = d["contrato_cidade"] = None
+            d["contrato_inicio"] = d["contrato_fim"] = d["contrato_status"] = None
+            result.append(d)
+            continue
         if os_obj:
             d["placa"]         = os_obj.placa
             d["modelo"]        = os_obj.modelo
             
-            emp_val = nf.id_empresa or os_obj.id_empresa or os_obj.empresa
+            emp_val = nf.id_empresa or os_obj.id_empresa
             d["empresa"] = emp_val
 
             
@@ -195,8 +202,8 @@ def listar_parcelas(year: int = None, empresa: str = None, db: Session = Depends
         else:
             d["placa"]         = manut.placa
             d["modelo"]        = manut.modelo
-            d["empresa"]       = manut.empresa
-            d["empresa_nome"]  = _empresa_nome(data, manut.empresa)
+            d["empresa"]       = manut.id_empresa
+            d["empresa_nome"]  = _empresa_nome(data, manut.id_empresa)
             d["id_contrato"]   = manut.id_contrato
             d["fornecedor_os"] = manut.fornecedor
             d["fornecedor"]    = getattr(p, "fornecedor", None) or manut.fornecedor

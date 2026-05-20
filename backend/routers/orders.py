@@ -6,7 +6,6 @@ import models, schemas
 from services.os_helpers import (
     generate_numero_os_atomic,
     validar_consistencia_os,
-    _resolve_fornecedor_id
 )
 from services.excel_io import _sync_os_to_excel
 import logging
@@ -175,17 +174,13 @@ def abrir_os(payload: schemas.OsAbrir, db: Session = Depends(get_db)):
     if not data.get("modelo"):     data["modelo"]     = veiculo.modelo
     if not data.get("placa"):      data["placa"]      = veiculo.placa
     if not data.get("implemento"): data["implemento"] = veiculo.implemento
-    if not data.get("empresa"):    data["empresa"]    = veiculo.empresa
+    if not data.get("id_empresa"):  data["id_empresa"]  = veiculo.id_empresa
 
     # Auto-preenchimento de categoria da OS pelo 1º item se vazio
     if not data.get("categoria") and payload.itens:
         first_cat = payload.itens[0].categoria
         if first_cat:
             data["categoria"] = first_cat
-
-    # Resolução de fornecedor_id
-    if data.get("fornecedor"):
-        data["fornecedor_id"] = _resolve_fornecedor_id(db, data.get("fornecedor"))
 
     data["numero_os"] = generate_numero_os_atomic(db)
     

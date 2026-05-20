@@ -36,11 +36,40 @@ export const atualizarReembolso     = (id, payload)         => api.patch(`/db/re
 export const deletarReembolso       = (id)                  => api.delete(`/db/reembolsos/${id}`)
 export const pagarReembolso         = (id, payload)         => api.post(`/db/reembolsos/${id}/pagar`, payload).then(r => r.data)
 
+// ── Faturamento Mensal ───────────────────────────────────────────────
+export const getFaturamento         = (params = {})         => api.get('/db/faturamento', { params }).then(r => r.data)
+export const getFaturamentoSummary  = (params = {})         => api.get('/db/faturamento/summary', { params }).then(r => r.data)
+export const getFaturamentoPrefill  = (contrato_id, mes)    => api.get('/db/faturamento/prefill', { params: { contrato_id, mes } }).then(r => r.data)
+export const getProximoNumeroFatura = (empresa_id)          => api.get('/db/faturamento/proximo-numero', { params: { empresa_id } }).then(r => r.data)
+export const criarFatura            = (payload)             => api.post('/db/faturamento', payload).then(r => r.data)
+export const patchFatura            = (id, payload)         => api.patch(`/db/faturamento/${id}`, payload).then(r => r.data)
+
 // ── Contratos ─────────────────────────────────────────────────────────
-export const getContratos           = (params = {})         => api.get('/db/contratos', { params }).then(r => r.data)
-export const getContratoVeiculos    = (id)                  => api.get(`/db/contratos/${id}/veiculos`).then(r => r.data)
-export const getContratoFaturas     = (id)                  => api.get(`/db/contratos/${id}/faturas`).then(r => r.data)
-export const getClientes            = ()                    => api.get('/db/clientes').then(r => r.data)
+export const getContratos              = (params = {})              => api.get('/db/contratos', { params }).then(r => r.data)
+export const getContrato               = (id)                       => api.get(`/db/contratos/${id}`).then(r => r.data)
+export const criarContrato             = (payload)                  => api.post('/db/contratos', payload).then(r => r.data)
+export const atualizarContrato         = (id, payload)              => api.patch(`/db/contratos/${id}`, payload).then(r => r.data)
+export const deletarContrato           = (id)                       => api.delete(`/db/contratos/${id}`)
+export const getContratoVeiculos       = (id)                       => api.get(`/db/contratos/${id}/veiculos`).then(r => r.data)
+export const adicionarVeiculoContrato  = (id, payload)              => api.post(`/db/contratos/${id}/veiculos`, payload).then(r => r.data)
+export const syncVeiculosContrato      = (id, payload)              => api.put(`/db/contratos/${id}/veiculos`, payload).then(r => r.data)
+export const removerVeiculoContrato    = (id, id_veiculo)           => api.delete(`/db/contratos/${id}/veiculos/${id_veiculo}`)
+export const getContratoFaturas        = (id)                       => api.get(`/db/contratos/${id}/faturas`).then(r => r.data)
+export const getContratoMetricas       = (id)                       => api.get(`/db/contratos/${id}/metricas-veiculos`).then(r => r.data)
+export const getFrotaDisponivel        = ()                         => api.get('/db/contratos/frota-disponivel').then(r => r.data)
+export const getClientes               = ()                         => api.get('/db/clientes').then(r => r.data)
+
+// ── Débitos Veiculares ───────────────────────────────────────────────
+export const getDebitos          = (params = {})         => api.get('/db/debitos', { params }).then(r => r.data)
+export const getDebitosSummary   = (params = {})         => api.get('/db/debitos/summary', { params }).then(r => r.data)
+export const criarDebito         = (payload)             => api.post('/db/debitos', payload).then(r => r.data)
+export const patchDebito         = (id, payload)         => api.patch(`/db/debitos/${id}`, payload).then(r => r.data)
+export const getMultas           = (params = {})         => api.get('/db/multas', { params }).then(r => r.data)
+export const getMultasSummary    = (params = {})         => api.get('/db/multas/summary', { params }).then(r => r.data)
+export const criarMulta          = (payload)             => api.post('/db/multas', payload).then(r => r.data)
+export const patchMulta          = (id, payload)         => api.patch(`/db/multas/${id}`, payload).then(r => r.data)
+export const criarNicMulta       = (id)                  => api.post(`/db/multas/${id}/nic`).then(r => r.data)
+export const patchFrotaRestricoes = (id, payload)        => api.patch(`/db/frota/${id}/restricoes`, payload).then(r => r.data)
 
 // ── Banco SQLite — CRUD legado (manutenções) ─────────────────────────
 export const dbListFrota           = ()                    => api.get('/db/frota').then(r => r.data)

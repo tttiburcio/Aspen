@@ -4,8 +4,7 @@ from database import get_db
 import models, schemas
 from services.os_helpers import (
     generate_numero_os_atomic,
-    _resolve_fornecedor_id,
-    _validar_nf_duplicada
+    _validar_nf_duplicada,
 )
 import logging
 
@@ -40,7 +39,6 @@ def adicionar_nf(os_id: int, payload: schemas.NotaFiscalCreate, db: Session = De
     # Propaga fornecedor para o cabeçalho da OS
     if payload.fornecedor:
         os.fornecedor = payload.fornecedor
-        os.fornecedor_id = _resolve_fornecedor_id(db, payload.fornecedor)
 
     nf_data = payload.model_dump(exclude={"itens", "parcelas"})
     nf = models.NotaFiscal(os_id=os_id, **nf_data)
@@ -81,7 +79,6 @@ def sync_nfs(os_id: int, payload: list[schemas.NotaFiscalCreate], db: Session = 
         first_f = payload[0].fornecedor
         if first_f:
             os_obj.fornecedor = first_f
-            os_obj.fornecedor_id = _resolve_fornecedor_id(db, first_f)
 
     nfs_criadas = []
     for nf_data in payload:

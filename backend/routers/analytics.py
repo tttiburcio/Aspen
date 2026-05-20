@@ -36,7 +36,7 @@ def get_years():
     fat = _parse(data["fat_unitario"], "Mes")
     if "Mes" in fat.columns:
         years.update(fat["Mes"].dropna().dt.year.astype(int).tolist())
-    fsh = _parse(data["faturamento"], "Emissão")
+    fsh = _parse(data.get("faturamento_mensal", pd.DataFrame()), "Emissão")
     if "Emissão" in fsh.columns:
         years.update(fsh["Emissão"].dropna().dt.year.astype(int).tolist())
     # Also include years from OS records and faturamento_mensal in the DB

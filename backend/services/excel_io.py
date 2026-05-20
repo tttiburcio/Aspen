@@ -236,7 +236,7 @@ def sync_db_to_excel() -> int:
                                     "IDManutencao":       next_id,
                                     "IDOrdServ":          os_obj.numero_os,
                                     "TotalOS":            float(os_obj.total_os) if os_obj.total_os else np.nan,
-                                    "Empresa":            os_obj.empresa,
+                                    "Empresa":            os_obj.id_empresa,
                                     "Placa":              os_obj.placa,
                                     "IDVeiculo":          os_obj.id_veiculo,
                                     "Modelo":             os_obj.modelo,
@@ -270,7 +270,7 @@ def sync_db_to_excel() -> int:
                                 "IDManutencao":       next_id,
                                 "IDOrdServ":          os_obj.numero_os,
                                 "TotalOS":            float(os_obj.total_os) if os_obj.total_os else np.nan,
-                                "Empresa":            os_obj.empresa,
+                                "Empresa":            os_obj.id_empresa,
                                 "Placa":              os_obj.placa,
                                 "IDVeiculo":          os_obj.id_veiculo,
                                 "Modelo":             os_obj.modelo,
@@ -398,13 +398,20 @@ def sync_reembolsos_from_excel() -> int:
             if xid is None:
                 continue
 
+            # Dedup por chave composta (campo id_reembolso_excel foi removido do modelo)
+            _tipo  = _normalizar_tipo(_sv_str(row.get("Tipo")))
+            _idv   = _sv_int(row.get("IDVeiculo"))
+            _emis  = _sv_date(row.get("Emissão"))
+            _valor = _sv_float(row.get("ValorReembolso"))
             existing = db.query(models.Reembolso).filter(
-                models.Reembolso.id_reembolso_excel == xid
+                models.Reembolso.id_veiculo      == _idv,
+                models.Reembolso.emissao         == _emis,
+                models.Reembolso.tipo            == _tipo,
+                models.Reembolso.valor_reembolso == _valor,
             ).first()
 
             vals = dict(
-                id_reembolso_excel = xid,
-                tipo               = _normalizar_tipo(_sv_str(row.get("Tipo"))),
+                tipo               = _tipo,
                 id_empresa         = _sv_int(row.get("IDEmpresa")),
                 id_contrato        = _sv_int(row.get("IDContrato")),
                 id_cliente         = _sv_int(row.get("IDCliente")),
@@ -427,8 +434,8 @@ def sync_reembolsos_from_excel() -> int:
             if existing:
                 # Preserva campos de pagamento manual (marcado via UI)
                 # se o registro foi pago pela UI, o Excel ainda tem status antigo
-                campos_pagamento = {'status_recebimento', 'valor_recebido', 'data_recebimento', 'forma_recebimento'}
-                pago_manualmente = existing.data_recebimento is not None
+                campos_pagamento = {'status_recebimento', 'valor_recebido', 'data_entrada', 'forma_recebimento'}
+                pago_manualmente = existing.data_entrada is not None
                 for k, v in vals.items():
                     if pago_manualmente and k in campos_pagamento:
                         continue

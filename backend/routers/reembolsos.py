@@ -51,7 +51,6 @@ def _enriquecer(r: models.Reembolso, frota_map: dict, empresa_map: dict) -> dict
 
     return {
         "id":                  r.id,
-        "id_reembolso_excel":  r.id_reembolso_excel,
         "tipo":                r.tipo,
         "id_empresa":          r.id_empresa,
         "empresa_emissora":    empresa.sigla if empresa else None,
@@ -77,6 +76,8 @@ def _enriquecer(r: models.Reembolso, frota_map: dict, empresa_map: dict) -> dict
         "modelo":              modelo,
         "numero_os":           r.numero_os,
         "fatura_mes":          r.fatura_mes,
+        "id_multa":            r.id_multa,
+        "ids_multa_json":      r.ids_multa_json,
     }
 
 
@@ -281,6 +282,8 @@ def criar_reembolso(
         id_empresa         = payload.id_empresa,
         id_contrato        = payload.id_contrato,
         id_veiculo         = payload.id_veiculo,
+        id_multa           = payload.id_multa,
+        ids_multa_json     = payload.ids_multa_json,
         placas_json        = payload.placas_json,
         fatura_mes         = payload.fatura_mes,
         numero_os          = payload.numero_os,
@@ -336,9 +339,6 @@ def deletar_reembolso(id: int, db: Session = Depends(get_db)):
     r = db.query(models.Reembolso).filter(models.Reembolso.id == id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Reembolso não encontrado")
-    # Só permite excluir registros manuais (sem id_reembolso_excel)
-    if r.id_reembolso_excel is not None:
-        raise HTTPException(status_code=403, detail="Registros importados do Excel não podem ser excluídos pelo sistema")
     db.delete(r)
     db.commit()
 

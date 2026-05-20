@@ -62,17 +62,17 @@ class ParcelaResponse(BaseModel):
     id:               Union[int, str]
     manutencao_id:    Optional[int] = None
     nf_id:            Optional[int] = None
-    nf_ordem:         Optional[int]
-    nota:             Optional[str]
+    nf_ordem:         Optional[int]   = None
+    nota:             Optional[str]   = None
     fornecedor:       Optional[str]   = None
     valor_item_total: Optional[float] = None
     tipo_custo:       Optional[str]   = None
-    data_vencimento:  Optional[date]
-    parcela_atual:    Optional[int]
-    parcela_total:    Optional[int]
-    valor_parcela:    Optional[float]
-    forma_pgto:       Optional[str]
-    status_pagamento: str
+    data_vencimento:  Optional[date]  = None
+    parcela_atual:    Optional[int]   = None
+    parcela_total:    Optional[int]   = None
+    valor_parcela:    Optional[float] = None
+    forma_pgto:       Optional[str]   = None
+    status_pagamento: str             = "Pendente"
     data_vencimento_original: Optional[date]  = None
     prorrogada:               Optional[bool]  = None
     isento_encargos:          Optional[bool]  = None
@@ -90,9 +90,9 @@ class ParcelaResponse(BaseModel):
 
 
 class ParcelaFinanceiroResponse(ParcelaResponse):
-    placa:            str
+    placa:            Optional[str]  = None
     modelo:           Optional[str]  = None
-    empresa:          Optional[str]  = None
+    empresa:          Optional[int]  = None
     empresa_nome:     Optional[str]  = None
     id_contrato:      Optional[str]  = None
     fornecedor_os:    Optional[str]  = None
@@ -217,10 +217,11 @@ class ManutencaoResponse(BaseModel):
     id:                int
     status_manutencao: str
     id_veiculo:        int
-    placa:             str
-    modelo:            Optional[str]
-    empresa:           Optional[str]
-    id_contrato:       Optional[str]
+    placa:             Optional[str]  = None
+    modelo:            Optional[str]  = None
+    id_empresa:        Optional[int]  = None
+    empresa:           Optional[str]  = None
+    id_contrato:       Optional[str]  = None
     implemento:        Optional[str]
     fornecedor:        Optional[str]
     tipo_manutencao:   Optional[str]
@@ -258,10 +259,11 @@ class FrotaResponse(BaseModel):
 
     id:         int
     placa:      str
-    modelo:     Optional[str]
-    empresa:    Optional[str]
-    status:     Optional[str]
-    implemento: Optional[str]
+    modelo:     Optional[str]  = None
+    id_empresa: Optional[int]  = None
+    empresa:    Optional[str]  = None
+    status:     Optional[str]  = None
+    implemento: Optional[str]  = None
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -438,7 +440,8 @@ class OsResponse(BaseModel):
     id_veiculo:      int
     placa:           Optional[str]
     modelo:          Optional[str]
-    empresa:         Optional[str]
+    id_empresa:      Optional[int]   = None
+    empresa:         Optional[str]   = None
     id_contrato:     Optional[str]
     implemento:      Optional[str]
     fornecedor:      Optional[str]
@@ -504,7 +507,6 @@ class ReembolsoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id:                  int
-    id_reembolso_excel:  Optional[int]   = None
     tipo:                Optional[str]   = None
     id_empresa:          Optional[int]   = None
     empresa_emissora:    Optional[str]   = None   # sigla: TKJ / LANDKRAFT / FINITA
@@ -530,6 +532,8 @@ class ReembolsoResponse(BaseModel):
     placas_json:         Optional[str]   = None
     placa:               Optional[str]   = None
     modelo:              Optional[str]   = None
+    id_multa:            Optional[int]   = None
+    ids_multa_json:      Optional[str]   = None
 
 
 class ReembolsoCreate(BaseModel):
@@ -537,6 +541,8 @@ class ReembolsoCreate(BaseModel):
     id_empresa:         Optional[int]   = None
     id_contrato:        Optional[int]   = None
     id_veiculo:         Optional[int]   = None
+    id_multa:           Optional[int]   = None
+    ids_multa_json:     Optional[str]   = None
     placas_json:        Optional[str]   = None
     fatura_mes:         Optional[str]   = None
     numero_os:          Optional[str]   = None

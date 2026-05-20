@@ -7,6 +7,9 @@ import VehiclesPage from './pages/VehiclesPage'
 import MaintenancePage from './pages/MaintenancePage'
 import AnalysisPage from './pages/AnalysisPage'
 import ReembolsosPage from './pages/ReembolsosPage'
+import FaturamentoPage from './pages/FaturamentoPage'
+import ContratosPage from './pages/ContratosPage'
+import DebitsPage from './pages/DebitsPage'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { CompanyProvider, useCompanies, GRUPO } from './contexts/CompanyContext'
 import { Loader2, Plus, Menu, RefreshCw, ChevronDown, Building2, Bell, AlertCircle } from 'lucide-react'
@@ -62,11 +65,14 @@ function CompanyHeaderSelector() {
 const HEADER_ACTIONS = {}
 
 const PAGE_TITLE = {
-  overview:    'Visão Geral — Índices',
-  vehicles:    'Frota — Analítico',
-  maintenance: 'Manutenção — Gestão de OS',
-  analysis:    'Intervalos — KM & Tempo por Sistema',
-  reembolsos:  'Reembolsos — Gestão',
+  overview:     'Visão Geral — Índices',
+  vehicles:     'Frota — Analítico',
+  maintenance:  'Manutenção — Gestão de OS',
+  analysis:     'Intervalos — KM & Tempo por Sistema',
+  reembolsos:   'Reembolsos — Gestão',
+  faturamento:  'Faturamento — Faturas & Impostos',
+  contratos:    'Contratos — Administração',
+  debitos:      'Débitos Veiculares — IPVA, Licenciamento & Multas',
 }
 
 function AppContent() {
@@ -292,6 +298,24 @@ function AppContent() {
           {!loading && page === 'reembolsos' && (
             <div key={`reembolsos-${year}-${empresa}`} className="animate-page-fade">
               <ReembolsosPage year={year} />
+            </div>
+          )}
+
+          {!loading && page === 'faturamento' && (
+            <div key={`faturamento-${year}-${empresa}`} className="animate-page-fade">
+              <FaturamentoPage year={year} />
+            </div>
+          )}
+
+          {page === 'contratos' && (
+            <div key={`contratos-${empresa}`} className="animate-page-fade">
+              <ContratosPage />
+            </div>
+          )}
+
+          {page === 'debitos' && (
+            <div key={`debitos-${year}-${empresa}`} className="animate-page-fade">
+              <DebitsPage year={year} />
             </div>
           )}
         </div>

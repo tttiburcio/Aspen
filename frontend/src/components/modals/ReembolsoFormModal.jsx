@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X, Loader2, Banknote, ChevronRight, Building2, FileText,
   Truck, Hash, CreditCard, Calendar, CheckSquare, Square,
+  Search, AlertTriangle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -13,6 +14,7 @@ import {
   getContratoFaturas,
   getProximoRecibo,
   dbListOs,
+  getMultas,
 } from '../../utils/api'
 
 // ─── Constantes ───────────────────────────────────────────────────────
@@ -130,6 +132,13 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
     empresa:            reembolso?.empresa    || '',
   })
 
+  // ── Multa de Trânsito: seleção de multa(s) existente(s) ──
+  const [multasSel,     setMultasSel]     = useState([])
+  const [multasList,    setMultasList]    = useState([])
+  const [loadingMultas, setLoadingMultas] = useState(false)
+  const [multaSearch,   setMultaSearch]   = useState('')
+  const [showComReemb,  setShowComReemb]  = useState(false)
+
   // ── Loadings ──
   const [loadingContratos, setLoadingContratos] = useState(false)
   const [loadingVeiculos,  setLoadingVeiculos]  = useState(false)
@@ -140,8 +149,12 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  // Passo atual do stepper
-  const step = !tipo ? 1 : !contrato ? 2 : 3
+  // ── Passo atual do stepper ──
+  const isMulTipo = tipo === 'Multa de Trânsito'
+  const step = !tipo ? 1
+    : isMulTipo && !isEdit && !multasSel.length ? 2
+    : !contrato ? (isMulTipo ? 3 : 2)
+    : (isMulTipo ? 4 : 3)
 
   // ── Carrega contratos quando tipo ou toggle de inativos muda ──
   useEffect(() => {
@@ -209,6 +222,39 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
       .finally(() => setLoadingOs(false))
   }, [tipo, isEdit, reembolso?.placa])
 
+  // ── Carrega multas quando tipo = Multa de Trânsito (criação) ──
+  useEffect(() => {
+    if (tipo !== 'Multa de Trânsito' || isEdit) { setMultasList([]); return }
+    setLoadingMultas(true)
+    getMultas()
+      .then(d => setMultasList((d || []).filter(m => m.status_multa !== 'Cancelado')))
+      .finally(() => setLoadingMultas(false))
+  }, [tipo, isEdit])
+
+  // ── Pré-preenche form quando multas selecionadas mudam ──
+  useEffect(() => {
+    if (!multasSel.length) return
+    const total = multasSel.reduce((sum, m) =>
+      sum + (m.valor_com_desconto > 0 ? m.valor_com_desconto : m.valor_multa), 0)
+    set('valor_reembolso', String(total))
+    const descParts = multasSel.map(m =>
+      [m.ait && `AIT ${m.ait}`, m.motivo_infracao].filter(Boolean).join(' — ')
+    ).filter(Boolean)
+    if (descParts.length) set('descricao', descParts.join(' | '))
+    const first = multasSel[0]
+    if (first?.cliente_nome && first.cliente_nome !== '—') set('empresa', first.cliente_nome)
+  }, [multasSel])
+
+  // ── Auto-seleciona contrato quando todas as multas compartilham mesmo contrato ──
+  useEffect(() => {
+    if (!multasSel.length || !contratos.length || contrato) return
+    const ids = [...new Set(multasSel.map(m => m.id_contrato).filter(Boolean))]
+    if (ids.length === 1) {
+      const c = contratos.find(c => c.id === ids[0])
+      if (c) handleContrato(String(c.id))
+    }
+  }, [multasSel, contratos])
+
   // ── Toggle placa ──
   const togglePlaca = placa => {
     setPlacasSelecionadas(prev =>
@@ -229,6 +275,26 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
     setFaturaSel(null)
     setNumeroOs('')
   }
+
+  const handleMultaSel = (m) => {
+    setMultasSel(prev =>
+      prev.some(s => s.id === m.id) ? prev.filter(s => s.id !== m.id) : [...prev, m]
+    )
+    setContrato(null)
+    setPlacasSelecionadas([])
+    setTodasPlacas(false)
+  }
+
+  const filteredMultas = useMemo(() => {
+    let r = multasList
+    if (!showComReemb) r = r.filter(m => m.reembolso_qtd === 0)
+    if (multaSearch.trim()) {
+      const q = multaSearch.toLowerCase()
+      r = r.filter(m => [m.placa, m.ait, m.motivo_infracao, m.empresa_sigla, m.cliente_nome]
+        .some(f => (f || '').toLowerCase().includes(q)))
+    }
+    return r
+  }, [multasList, showComReemb, multaSearch])
 
   // ── Validação e envio ──
   const handleSubmit = async e => {
@@ -268,30 +334,38 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
     if (!tipo)    return toast.error('Selecione o tipo de reembolso')
     if (!contrato) return toast.error('Selecione o contrato')
     if (tipo === 'Encargo de Faturamento' && !faturaSel) return toast.error('Selecione a fatura de referência')
-    if (PRECISA_VEICULO.includes(tipo) && !todasPlacas && !placasSelecionadas.length)
+    if (PRECISA_VEICULO.includes(tipo) && tipo !== 'Multa de Trânsito' && !todasPlacas && !placasSelecionadas.length)
       return toast.error('Selecione pelo menos um veículo')
+    if (tipo === 'Multa de Trânsito' && !multasSel.length && !todasPlacas && !placasSelecionadas.length)
+      return toast.error('Selecione pelo menos uma multa ou um veículo do contrato')
     if (!form.valor_reembolso || parseFloat(form.valor_reembolso) <= 0)
       return toast.error('Informe o valor do reembolso')
     if (!form.vencimento)
       return toast.error('Informe a data de vencimento')
 
-    // Para Encargo: usa todas as placas do contrato automaticamente
+    // Placas: multas selecionadas → placas únicas das multas; outros tipos → lógica existente
     const placasFinais = tipo === 'Encargo de Faturamento'
       ? veiculos.map(v => v.placa).filter(Boolean)
-      : todasPlacas
-        ? veiculos.map(v => v.placa).filter(Boolean)
-        : placasSelecionadas
+      : tipo === 'Multa de Trânsito' && multasSel.length
+        ? [...new Set(multasSel.map(m => m.placa).filter(Boolean))]
+        : todasPlacas
+          ? veiculos.map(v => v.placa).filter(Boolean)
+          : placasSelecionadas
 
-    // id_veiculo = primeiro veículo das placas finais
-    const primeiroVeiculo = veiculos.find(v => placasFinais.includes(v.placa))
+    // id_veiculo: primeiro veículo das multas ou das placas selecionadas
+    const idVeiculo = tipo === 'Multa de Trânsito' && multasSel.length
+      ? multasSel[0].id_veiculo
+      : veiculos.find(v => placasFinais.includes(v.placa))?.id_veiculo || null
 
     setSaving(true)
     try {
       await criarReembolso({
         tipo,
+        id_multa:           multasSel[0]?.id || null,
+        ids_multa_json:     multasSel.length ? JSON.stringify(multasSel.map(m => m.id)) : null,
         id_empresa:         contrato.empresa_id || null,
         id_contrato:        contrato.id,
-        id_veiculo:         primeiroVeiculo?.id_veiculo || null,
+        id_veiculo:         idVeiculo,
         placas_json:        placasFinais.length ? JSON.stringify(placasFinais) : null,
         fatura_mes:         faturaSel ? faturaSel.emissao?.slice(0, 7) : null,
         numero_os:          numeroOs  || null,
@@ -299,7 +373,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
         vencimento:         form.vencimento || null,
         valor_reembolso:    parseFloat(form.valor_reembolso),
         valor_recebido:     form.valor_recebido ? parseFloat(form.valor_recebido) : null,
-        empresa:            contrato.nome_cliente,
+        empresa:            form.empresa || contrato.nome_cliente,
         recibo:             form.recibo   || null,
         forma_recebimento:  form.forma_recebimento  || null,
         status_recebimento: form.status_recebimento,
@@ -325,7 +399,7 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
       ref={backdropRef}
       onClick={e => { if (e.target === backdropRef.current) onClose() }}
     >
-      <div className="bg-g-950 border border-g-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 flex flex-col max-h-[92vh]">
+      <div className="bg-g-950 border border-g-800 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[92vh]">
 
         {/* ── Cabeçalho ── */}
         <div className="px-6 py-5 border-b border-g-800 shrink-0">
@@ -350,10 +424,17 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
           {/* Stepper — apenas no modo criação */}
           {!isEdit && (
             <div className="flex items-center gap-1 flex-wrap">
-              <StepLabel n={1} label="Tipo"     active={step === 1} done={step > 1} />
-              <StepLabel n={2} label="Contrato" active={step === 2} done={step > 2} />
-              <StepLabel n={3} label="Detalhes" active={step === 3} done={false}    />
-              <StepLabel n={4} label="Valores"  active={false}      done={false}    />
+              {isMulTipo ? <>
+                <StepLabel n={1} label="Tipo"     active={step === 1} done={step > 1} />
+                <StepLabel n={2} label="Multa"    active={step === 2} done={step > 2} />
+                <StepLabel n={3} label="Contrato" active={step === 3} done={step > 3} />
+                <StepLabel n={4} label="Detalhes" active={step === 4} done={false}    />
+              </> : <>
+                <StepLabel n={1} label="Tipo"     active={step === 1} done={step > 1} />
+                <StepLabel n={2} label="Contrato" active={step === 2} done={step > 2} />
+                <StepLabel n={3} label="Detalhes" active={step === 3} done={false}    />
+                <StepLabel n={4} label="Valores"  active={false}      done={false}    />
+              </>}
             </div>
           )}
         </div>
@@ -505,8 +586,148 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
             </div>
           </div>
 
-          {/* PASSO 2 — Contrato (aparece após tipo) */}
-          {tipo && (
+          {/* PASSO 2 (Multa de Trânsito) — Seleção de multa */}
+          {isMulTipo && (
+            <div>
+              <SectionHeader icon={FileText} label="Multa de Referência" />
+              {loadingMultas ? (
+                <div className="flex items-center gap-2 text-g-600 text-sm py-3">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Carregando multas…
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {/* Busca + toggle */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-g-600" />
+                      <input
+                        value={multaSearch}
+                        onChange={e => setMultaSearch(e.target.value)}
+                        placeholder="Buscar por placa, AIT, motivo…"
+                        className="w-full pl-8 pr-3 py-2 bg-g-900 border border-g-800 rounded-lg text-g-400 text-sm placeholder-g-700 focus:outline-none focus:border-g-600"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowComReemb(v => !v)}
+                      className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-all shrink-0 ${
+                        showComReemb
+                          ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                          : 'border-g-800 text-g-600 hover:border-g-700 hover:text-g-400'
+                      }`}
+                    >
+                      {showComReemb ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                      Mostrar com reembolso
+                    </button>
+                  </div>
+
+                  {filteredMultas.length === 0 ? (
+                    <p className="text-g-600 text-sm py-2">Nenhuma multa encontrada sem reembolso vinculado.</p>
+                  ) : (
+                    <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-1">
+                      {filteredMultas.map(m => {
+                        const sel = multasSel.some(s => s.id === m.id)
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => handleMultaSel(m)}
+                            className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                              sel
+                                ? 'border-emerald-500/50 bg-emerald-500/8'
+                                : 'border-g-800 bg-g-900 hover:border-g-700 hover:bg-g-850'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3 min-w-0">
+                                <div className={`w-3.5 h-3.5 rounded border-2 shrink-0 mt-0.5 transition-all flex items-center justify-center ${
+                                  sel ? 'border-emerald-400 bg-emerald-400' : 'border-g-700'
+                                }`}>{sel && <span className="text-white text-[8px] font-bold leading-none">✓</span>}</div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`font-mono font-bold text-xs ${sel ? 'text-emerald-300' : 'text-g-200'}`}>
+                                      {m.placa}
+                                    </span>
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                                      {m.empresa_sigla}
+                                    </span>
+                                    {m.ait && <span className="text-g-500 text-[10px] font-mono">{m.ait}</span>}
+                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                                      m.status_multa === 'Pago'
+                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                    }`}>{m.status_multa}</span>
+                                    {m.reembolso_qtd > 0 && (
+                                      <span className="flex items-center gap-0.5 text-[9px] text-amber-500">
+                                        <AlertTriangle className="w-2.5 h-2.5" />Já reembolsado
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-g-500 text-[11px] mt-0.5 truncate max-w-[320px]">
+                                    {m.motivo_infracao || 'Sem descrição'}{m.orgao_emissor ? ` · ${m.orgao_emissor}` : ''}
+                                  </p>
+                                  {m.cliente_nome && m.cliente_nome !== '—' && (
+                                    <p className="text-g-600 text-[10px] mt-0.5">Cliente: {m.cliente_nome}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className={`font-mono font-bold text-xs tabular-nums ${sel ? 'text-emerald-300' : 'text-g-200'}`}>
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                                    m.valor_com_desconto > 0 ? m.valor_com_desconto : m.valor_multa
+                                  )}
+                                </p>
+                                {m.valor_com_desconto > 0 && (
+                                  <p className="text-g-700 text-[9px] font-mono tabular-nums">
+                                    orig. {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(m.valor_multa)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Chips das multas selecionadas */}
+                  {multasSel.length > 0 && (
+                    <div className="flex flex-col gap-2 px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="text-emerald-400 text-[11px] font-semibold flex-1">
+                          {multasSel.length} multa{multasSel.length > 1 ? 's' : ''} selecionada{multasSel.length > 1 ? 's' : ''}
+                          {multasSel.length > 1 && (
+                            <span className="ml-1 text-emerald-600 font-mono">
+                              · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                                  multasSel.reduce((s, m) => s + (m.valor_com_desconto > 0 ? m.valor_com_desconto : m.valor_multa), 0)
+                                )}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {multasSel.map(m => (
+                          <div key={m.id}
+                            className="flex items-center gap-1.5 px-2 py-1 bg-g-900 border border-emerald-500/40 rounded-lg">
+                            <span className="font-mono font-bold text-emerald-300 text-xs">{m.placa}</span>
+                            {m.ait && <span className="text-g-500 text-[10px]">{m.ait}</span>}
+                            <button type="button" onClick={() => handleMultaSel(m)}
+                              className="text-g-600 hover:text-g-400 ml-0.5">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PASSO 3 — Contrato (aparece após tipo; para Multa de Trânsito, após selecionar multa(s)) */}
+          {tipo && (!isMulTipo || multasSel.length > 0) && (
             <div>
               <SectionHeader icon={Building2} label="Contrato" />
               {loadingContratos ? (
@@ -651,7 +872,8 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
               )}
 
               {/* ── MANUTENÇÃO / FRANQUIA / MULTA / TRANSPORTE: seleciona veículos ── */}
-              {PRECISA_VEICULO.includes(tipo) && (
+              {/* Para Multa de Trânsito com multas selecionadas, o veículo vem das multas */}
+              {PRECISA_VEICULO.includes(tipo) && !(isMulTipo && multasSel.length) && (
                 <div>
                   <SectionHeader icon={Truck} label="Veículos do Contrato" />
                   {loadingVeiculos ? (
@@ -727,6 +949,26 @@ export default function ReembolsoFormModal({ onClose, onSaved, reembolso }) {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ── Card veículo(s) das multas selecionadas ── */}
+              {isMulTipo && multasSel.length > 0 && (
+                <div className="flex items-start gap-3 px-4 py-3 bg-g-900 border border-g-800 rounded-xl">
+                  <Truck className="w-4 h-4 text-g-600 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-g-500 text-[10px] uppercase tracking-wider font-semibold mb-1.5">
+                      Veículo{multasSel.length > 1 ? 's' : ''}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[...new Map(multasSel.map(m => [m.placa, m])).values()].map(m => (
+                        <div key={m.placa} className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-g-200 text-sm">{m.placa}</span>
+                          {m.modelo && <span className="text-g-600 text-[10px]">· {m.modelo}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 

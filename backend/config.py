@@ -30,9 +30,9 @@ SHEETS = {
     "fat_unitario":     "💰 FAT_UNITARIO",
     "reembolsos":       "↩️ REEMBOLSOS",
     "manutencoes":      "🔧 MANUTENCOES",
-    "faturamento":      "🧾 FATURAMENTO",
+    "faturamento_mensal_excel": "🧾 FATURAMENTO",   # aba legada — só usada se Excel presente
     "seguro_mensal":    "📋 SEGURO_MENSAL",
-    "impostos":         "📋 IMPOSTOS",
+    "debitos_documentais": "📋 DEBITOS_DOCUMENTAIS",
     "rastreamento":     "📍RASTREAMENTO",
     "contratos":        "📄 CONTRATOS",
     "clientes":         "🏢 CLIENTES",

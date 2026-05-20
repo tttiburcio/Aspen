@@ -3,6 +3,7 @@ Migrações de schema — executadas uma vez no startup.
 
 Contém:
 - _migrate_parcelas_prorrogacao(): adiciona colunas novas + relaxa NOT NULL
+- _migrate_faturamento_imposto(): adiciona campos de imposto sobre faturamento
 - _migrate_1to1_safe(): migração idempotente manutencao → OS
 """
 import json
@@ -16,12 +17,121 @@ from services.os_helpers import _infer_tipo_nf, _status_os_from_manutencao
 logger = logging.getLogger("locadora")
 
 
+def _migrate_contrato_pagamento():
+    """Adiciona campos de forma de pagamento à tabela contratos (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        for col in [
+            "forma_pagamento VARCHAR(20)",
+            "multa_pct NUMERIC(6,2)",
+            "juros_pct NUMERIC(6,4)",
+            "dias_protesto INTEGER",
+        ]:
+            try:
+                con.execute(f"ALTER TABLE contratos ADD COLUMN {col}")
+                con.commit()
+            except Exception:
+                pass
+        logger.info("_migrate_contrato_pagamento: colunas adicionadas")
+    finally:
+        con.close()
+
+
+def _migrate_contrato_veiculo_valor_mensal():
+    """Adiciona valor_mensal à tabela contrato_veiculo (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        try:
+            con.execute("ALTER TABLE contrato_veiculo ADD COLUMN valor_mensal NUMERIC(14,2)")
+            con.commit()
+            logger.info("_migrate_contrato_veiculo_valor_mensal: coluna adicionada")
+        except Exception:
+            pass  # já existe
+    finally:
+        con.close()
+
+
+def _migrate_contrato_medicoes_assinado():
+    """Adiciona medicoes_total e assinado à tabela contratos (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        for col in [
+            "medicoes_total INTEGER",
+            "assinado BOOLEAN DEFAULT 0",
+        ]:
+            try:
+                con.execute(f"ALTER TABLE contratos ADD COLUMN {col}")
+                con.commit()
+            except Exception:
+                pass
+        logger.info("_migrate_contrato_medicoes_assinado: colunas adicionadas")
+    finally:
+        con.close()
+
+
+def _migrate_frota_restricoes():
+    """Adiciona coluna restricoes à tabela frota (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        try:
+            con.execute("ALTER TABLE frota ADD COLUMN restricoes TEXT")
+            con.commit()
+            logger.info("_migrate_frota_restricoes: coluna adicionada")
+        except Exception:
+            pass
+    finally:
+        con.close()
+
+
+def _migrate_frota_renavam():
+    """Adiciona coluna renavam na tabela frota (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        con.execute("ALTER TABLE frota ADD COLUMN renavam TEXT")
+        con.commit()
+        logger.info("_migrate_frota_renavam: renavam adicionada")
+    except Exception:
+        pass
+    finally:
+        con.close()
+
+
+def _migrate_reembolso_ids_multa_json():
+    """Adiciona coluna ids_multa_json na tabela reembolsos (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        con.execute("ALTER TABLE reembolsos ADD COLUMN ids_multa_json TEXT")
+        con.commit()
+        logger.info("_migrate_reembolso_ids_multa_json: ids_multa_json adicionada")
+    except Exception:
+        pass
+    finally:
+        con.close()
+
+
+def _migrate_multa_comunicado():
+    """Adiciona campos de comunicação ao cliente na tabela multas (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        for col, typedef in [
+            ("comunicado_enviado", "INTEGER DEFAULT 0"),
+            ("data_comunicado",    "DATE"),
+        ]:
+            try:
+                con.execute(f"ALTER TABLE multas ADD COLUMN {col} {typedef}")
+                con.commit()
+                logger.info(f"_migrate_multa_comunicado: {col} adicionada")
+            except Exception:
+                pass
+    finally:
+        con.close()
+
+
 def _migrate_reembolsos_v2():
     """Expande tabela reembolsos com todos os campos da aba Excel (idempotente)."""
     con = sqlite3.connect(str(DB_PATH))
     try:
         new_cols = [
-            "id_reembolso_excel INTEGER",
             "tipo VARCHAR(80)",
             "id_empresa INTEGER",
             "id_contrato INTEGER",
@@ -54,10 +164,66 @@ def _migrate_reembolsos_v2():
         try:
             con.execute("CREATE INDEX IF NOT EXISTS idx_reimb_emissao ON reembolsos(emissao)")
             con.execute("CREATE INDEX IF NOT EXISTS idx_reimb_veiculo ON reembolsos(id_veiculo)")
-            con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_reimb_excel_id ON reembolsos(id_reembolso_excel) WHERE id_reembolso_excel IS NOT NULL")
             con.commit()
         except Exception:
             pass
+    finally:
+        con.close()
+
+
+def _migrate_faturamento_imposto():
+    """Adiciona campos de imposto sobre faturamento à tabela faturamento_mensal (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        new_cols = [
+            "aliquota_imposto  NUMERIC(5,2)  DEFAULT 11.33",
+            "valor_imposto     NUMERIC(14,2)",
+            "valor_liquido     NUMERIC(14,2)",
+            "status_imposto    VARCHAR(20)   DEFAULT 'Pendente'",
+            "data_pgto_imposto DATE",
+            "encargo_imposto   NUMERIC(14,2)",
+            "forma_pagamento   VARCHAR(50)",
+        ]
+        for col_def in new_cols:
+            try:
+                con.execute(f"ALTER TABLE faturamento_mensal ADD COLUMN {col_def}")
+                con.commit()
+            except Exception:
+                pass
+        # Back-fill existing rows that have no imposto yet
+        con.execute("""
+            UPDATE faturamento_mensal
+            SET aliquota_imposto = 11.33,
+                valor_imposto    = ROUND(valor_locacoes * 11.33 / 100.0, 2),
+                valor_liquido    = ROUND(valor_locacoes - (valor_locacoes * 11.33 / 100.0), 2),
+                status_imposto   = 'Pendente'
+            WHERE valor_imposto IS NULL AND valor_locacoes IS NOT NULL
+        """)
+        con.commit()
+        logger.info("_migrate_faturamento_imposto: colunas adicionadas / backfill concluído")
+    finally:
+        con.close()
+
+
+def _migrate_faturamento_numero():
+    """Adiciona numero_fatura à tabela faturamento_mensal e cria índice único por empresa (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        try:
+            con.execute("ALTER TABLE faturamento_mensal ADD COLUMN numero_fatura INTEGER")
+            con.commit()
+        except Exception:
+            pass
+        try:
+            con.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_fat_empresa_numero "
+                "ON faturamento_mensal(id_empresa, numero_fatura) "
+                "WHERE numero_fatura IS NOT NULL"
+            )
+            con.commit()
+        except Exception:
+            pass
+        logger.info("_migrate_faturamento_numero: coluna e índice prontos")
     finally:
         con.close()
 
@@ -216,7 +382,7 @@ def _migrate_1to1_safe():
                 id_veiculo=m.id_veiculo,
                 placa=m.placa,
                 modelo=m.modelo,
-                empresa=m.empresa,
+                id_empresa=m.id_empresa,
                 id_contrato=m.id_contrato,
                 implemento=m.implemento,
                 fornecedor=m.fornecedor,
@@ -256,8 +422,7 @@ def _migrate_1to1_safe():
                             espec_pneu=m.espec_pneu,
                             marca_pneu=m.marca_pneu,
                             manejo_pneu=m.manejo_pneu,
-                            manutencao_origem_id=m.id,
-                        )
+                            )
                         db.add(item)
                         db.flush()
                         os_items_map[k_item] = item
@@ -309,8 +474,7 @@ def _migrate_1to1_safe():
                     id_empresa=_emp_id_row[0] if _emp_id_row else None,
                     valor_total_nf=valor_nf,
                     data_emissao=m.data_execucao,
-                    nf_ordem_origem=nf_ordem,
-                )
+                    )
                 db.add(nf)
                 db.flush()
                 nfs_criadas.append(nf)
@@ -343,10 +507,11 @@ def _migrate_1to1_safe():
             empresas = set(str(nf.id_empresa) for nf in nfs_criadas if nf.id_empresa)
             fornecedores = set(nf.fornecedor for nf in nfs_criadas if nf.fornecedor)
             
-            if len(empresas) > 1:
-                os.empresa = "Várias"
-            elif len(empresas) == 1:
-                os.empresa = list(empresas)[0]
+            if len(empresas) == 1:
+                try:
+                    os.id_empresa = int(list(empresas)[0])
+                except (ValueError, TypeError):
+                    pass
                 
             if len(fornecedores) > 1:
                 os.fornecedor = " / ".join(list(fornecedores))

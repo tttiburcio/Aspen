@@ -134,7 +134,7 @@ def _load_db_financials(year: int) -> dict:
     try:
         with engine.connect() as conn:
             result["fat"] = pd.read_sql(
-                "SELECT id_veiculo AS IDVeiculo, mes AS Mes, contrato AS Contrato, "
+                "SELECT id_veiculo AS IDVeiculo, mes AS Mes, "
                 "medicao AS Medicao, trabalhado AS Trabalhado, parado AS Parado, "
                 "id_empresa AS IDEmpresa "
                 "FROM fat_unitario WHERE strftime('%Y', mes) = :y",
@@ -151,9 +151,10 @@ def _load_db_financials(year: int) -> dict:
             result["seg"]["Vencimento"] = pd.to_datetime(result["seg"]["Vencimento"])
 
             result["imp"] = pd.read_sql(
-                "SELECT id_veiculo AS IDVeiculo, ano_imposto AS AnoImposto, "
-                "valor_total_final AS ValorTotalFinal, id_empresa AS IDEmpresa "
-                "FROM impostos WHERE ano_imposto = :y",
+                "SELECT id_veiculo AS IDVeiculo, exercicio AS Exercicio, "
+                "valor_ipva AS ValorIpva, valor_licenciamento AS ValorLicenc, "
+                "valor_multas AS ValorMultas, id_empresa AS IDEmpresa "
+                "FROM debitos_documentais WHERE exercicio = :y",
                 conn, params={"y": year},
             )
 
@@ -261,8 +262,8 @@ def _compute_core(year: int, empresa: str = None):
         logger.warning("[FC_FALLBACK] reembolsos do Excel — year=%s", year)
         reimb = _filter_year(_parse(data["reembolsos"].copy(), "Emissão"), "Emissão", year)
     if fat_sh.empty:
-        logger.warning("[FC_FALLBACK] faturamento do Excel — year=%s", year)
-        fat_sh = _filter_year(_parse(data["faturamento"].copy(), "Emissão"), "Emissão", year)
+        logger.warning("[FC_FALLBACK] faturamento_mensal Excel — year=%s", year)
+        fat_sh = _filter_year(_parse(data.get("faturamento_mensal", pd.DataFrame()).copy(), "Emissão"), "Emissão", year)
 
     logger.info(
         "[FC_FALLBACK] manut_raw lido do Excel em compute() year=%s — "
@@ -533,11 +534,12 @@ def _compute_core(year: int, empresa: str = None):
                if not rast.empty else pd.Series(dtype=float, name="CustoRastreamento"))
 
     if not imp.empty and "IDVeiculo" in imp.columns:
-        val_col = "ValorTotalFinal" if "ValorTotalFinal" in imp.columns else None
-        if val_col is None:
-            imp["_val"] = imp.get("ValorIpva", 0).fillna(0) + imp.get("ValorLicenc", 0).fillna(0)
-            val_col = "_val"
-        c_imp = imp.groupby("IDVeiculo")[val_col].sum().rename("CustoImpostos")
+        imp["_val"] = (
+            imp.get("ValorIpva",    pd.Series(0, index=imp.index)).fillna(0)
+            + imp.get("ValorLicenc",  pd.Series(0, index=imp.index)).fillna(0)
+            + imp.get("ValorMultas",  pd.Series(0, index=imp.index)).fillna(0)
+        )
+        c_imp = imp.groupby("IDVeiculo")["_val"].sum().rename("CustoImpostos")
     else:
         c_imp = pd.Series(dtype=float, name="CustoImpostos")
 
