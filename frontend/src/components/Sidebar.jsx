@@ -1,4 +1,4 @@
-import { LayoutDashboard, Truck, Wrench, BarChart2, Banknote, CircleDollarSign, FileText, FileWarning, ChevronDown, Menu, X } from 'lucide-react'
+import { LayoutDashboard, Truck, Wrench, BarChart2, Banknote, CircleDollarSign, FileText, FileWarning, MapPin, Shield, ChevronDown, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
 const NAV = [
@@ -10,6 +10,8 @@ const NAV = [
   { key: 'faturamento',  label: 'Faturamento',  icon: CircleDollarSign },
   { key: 'contratos',    label: 'Contratos',    icon: FileText  },
   { key: 'debitos',      label: 'Débitos',      icon: FileWarning },
+  { key: 'rastreamento', label: 'Rastreamento', icon: MapPin },
+  { key: 'seguro',       label: 'Seguro',       icon: Shield },
 ]
 
 export default function Sidebar({ page, setPage, years, year, setYear, isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen }) {

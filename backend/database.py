@@ -26,26 +26,5 @@ def get_db():
 
 
 def init_db():
-    """Cria todas as tabelas se não existirem. Importe models antes de chamar."""
+    """Create all tables for a fresh install. Schema migrations are managed by Alembic."""
     Base.metadata.create_all(bind=engine)
-    _migrate_add_columns()
-
-
-def _migrate_add_columns():
-    """Adiciona colunas novas em tabelas existentes (idempotente)."""
-    migrations = [
-        ("os_itens",       "categoria",          "VARCHAR(30)"),
-        ("ordens_servico", "status_execucao",     "VARCHAR(40)"),
-        ("ordens_servico", "descricao_pendente",  "TEXT"),
-    ]
-    with engine.connect() as conn:
-        for table, column, col_type in migrations:
-            try:
-                conn.execute(
-                    __import__("sqlalchemy").text(
-                        f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
-                    )
-                )
-                conn.commit()
-            except Exception:
-                pass  # coluna já existe

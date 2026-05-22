@@ -14,7 +14,7 @@ GET    /api/db/contratos/{id}/faturas              → faturas do contrato
 GET    /api/db/clientes                            → lista de clientes
 """
 from datetime import date, date as _date_cls
-from typing import Optional, List
+from typing import Optional, List, Literal
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sf
@@ -130,7 +130,7 @@ class ContratoCreate(BaseModel):
     estado_operacao: Optional[str]   = None
     data_inicio:     Optional[date]  = None
     data_fim:        Optional[date]  = None
-    status_contrato: str             = "Ativo"
+    status_contrato: Literal["Ativo","Encerrado","Suspenso","Em negociação"] = "Ativo"
     forma_pagamento: Optional[str]   = None
     multa_pct:       Optional[float] = None
     juros_pct:       Optional[float] = None
@@ -283,22 +283,25 @@ def metricas_veiculos_contrato(contrato_id: int, db: Session = Depends(get_db)):
     inicio_str = str(contrato.data_inicio) if contrato.data_inicio else "2000-01-01"
     fim_str    = str(contrato.data_fim)    if contrato.data_fim    else "9999-12-31"
 
+    # Single bulk query instead of 1 query per vehicle
+    fat_rows = db.execute(
+        text("""
+            SELECT id_veiculo, COUNT(*) AS cnt, COALESCE(SUM(COALESCE(medicao,0)),0) AS total
+            FROM fat_unitario
+            WHERE id_veiculo IN :ids AND mes >= :ini AND mes <= :fim
+            GROUP BY id_veiculo
+        """),
+        {"ids": tuple(ids) if ids else (-1,), "ini": inicio_str, "fim": fim_str},
+    ).fetchall()
+    fat_map = {row[0]: (int(row[1]), float(row[2])) for row in fat_rows}
+
     veiculos_data = []
     for lk in links:
         v   = frota_map.get(lk.id_veiculo)
         vm  = valor_map.get(lk.id_veiculo, 0.0)
-        row = db.execute(
-            text("""
-                SELECT COUNT(*) AS cnt, COALESCE(SUM(COALESCE(medicao,0)),0) AS total
-                FROM fat_unitario
-                WHERE id_veiculo = :v AND mes >= :ini AND mes <= :fim
-            """),
-            {"v": lk.id_veiculo, "ini": inicio_str, "fim": fim_str},
-        ).fetchone()
-        medicoes_consumidas = int(row[0]) if row else 0
-        medicoes_restantes  = max(0, medicoes_total - medicoes_consumidas)
-        total_medido        = float(row[1]) if row else 0.0
-        total_pendente      = round(vm * medicoes_restantes, 2)
+        medicoes_consumidas, total_medido = fat_map.get(lk.id_veiculo, (0, 0.0))
+        medicoes_restantes = max(0, medicoes_total - medicoes_consumidas)
+        total_pendente     = round(vm * medicoes_restantes, 2)
 
         veiculos_data.append({
             "id_veiculo":          lk.id_veiculo,

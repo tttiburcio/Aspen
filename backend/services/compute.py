@@ -159,12 +159,17 @@ def _load_db_financials(year: int) -> dict:
             )
 
             result["rast"] = pd.read_sql(
-                "SELECT id_veiculo AS IDVeiculo, vencimento AS Vencimento, valor AS Valor, "
-                "id_empresa AS IDEmpresa "
-                "FROM rastreamento WHERE strftime('%Y', vencimento) = :y",
+                "SELECT id_veiculo AS IDVeiculo, "
+                "  vencimento AS Vencimento, "
+                "  valor_mensal * 12 AS Valor, "
+                "  id_empresa AS IDEmpresa "
+                "FROM rastreamento "
+                "WHERE COALESCE(vencimento, :y || '-12-31') >= :y || '-01-01' "
+                "  AND COALESCE(data_inicio, :y || '-01-01') <= :y || '-12-31'",
                 conn, params={"y": str(year)},
             )
-            result["rast"]["Vencimento"] = pd.to_datetime(result["rast"]["Vencimento"])
+            if not result["rast"].empty:
+                result["rast"]["Vencimento"] = pd.to_datetime(result["rast"]["Vencimento"])
 
             result["reimb"] = pd.read_sql(
                 "SELECT id_veiculo AS IDVeiculo, emissao AS Emissão, "
@@ -306,7 +311,7 @@ def _compute_core(year: int, empresa: str = None):
 
             # ── Filtrar por empresa ────────────────────────────────────────────
             if emp_id is not None:
-                if emp_id == 1:  # TKJ: proprietária de todos os veículos próprios
+                if emp_id == 1:  # EMPRESA_A: proprietária de todos os veículos próprios
                     frota = frota[frota["IDEmpresa"] == 1].copy()
                     empresa_ids = set(frota["IDVeiculo"].dropna().tolist())
                     fat   = fat[fat["IDEmpresa"]  == 1] if not fat.empty   and "IDEmpresa" in fat.columns   else fat
@@ -317,7 +322,7 @@ def _compute_core(year: int, empresa: str = None):
                     if not manut_raw.empty and "IDVeiculo" in manut_raw.columns:
                         manut_raw = manut_raw[manut_raw["IDVeiculo"].isin(empresa_ids)]
                 else:
-                    # Outras empresas (ex: LANDKRAFT=3): veículos sublocados (TKJ id=1, status=Sublocado)
+                    # Outras empresas: veículos sublocados de EMPRESA_A (id=1, status=Sublocado)
                     # OU veículos de propriedade direta dessa empresa
                     if "IDEmpresa" in frota.columns and "Status" in frota.columns:
                         mask = (

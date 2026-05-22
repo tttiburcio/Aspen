@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 import models, schemas
 from services.excel_io import load_raw
+from services import regras
 
 router = APIRouter(tags=["Companies"])
 
@@ -48,6 +49,21 @@ def list_companies(db: Session = Depends(get_db)):
         result.append(d)
 
     return result
+
+
+@router.get("/api/enums")
+def get_enums():
+    """Returns all business-rule enumerations used by the frontend."""
+    return {
+        "coberturas_seguro":   regras.COBERTURAS_SEGURO,
+        "status_apolice":      regras.STATUS_APOLICE,
+        "status_rastreamento": regras.STATUS_RASTREAMENTO,
+        "orgaos_emissores":    regras.ORGAOS_EMISSORES,
+        "status_multa":        regras.STATUS_MULTA,
+        "status_contrato":     regras.STATUS_CONTRATO,
+        "tipos_reembolso":     regras.TIPOS_REEMBOLSO,
+        "status_recebimento":  regras.STATUS_RECEBIMENTO,
+    }
 
 
 def _infer_sigla(nome: str) -> str:

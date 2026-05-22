@@ -1,71 +1,192 @@
-# Aspen Fleet Dashboard & Analytics
+# Aspen — Fleet Management Dashboard
 
-> **Um sistema inteligente de gestão logística desenvolvido para solucionar a descentralização de dados operacionais em frotas de maquinário pesado e veículos leves.**
+![CI](https://github.com/tttiburcio/Aspen/actions/workflows/ci.yml/badge.svg)
 
----
+> **Dashboard financeiro e operacional para gestão de frotas de locação — construído como portfolio de engenharia.**
 
-## 💼 Contexto de Negócio & Problema Resolvido
 
-Historicamente, a gestão de frotas sofre com a **pulverização de dados**. Informações cruciais sobre telemetria (rastreamento GPS em tempo real), manutenções programadas, fluxo de caixa operacional (notas fiscais e parcelas) e produtividade mensal residiam em silos separados: planilhas esparsas manipuladas por diferentes departamentos e sistemas de rastreamento desconectados do financeiro.
-
-O **Aspen Dashboard** foi arquitetado como a camada unificadora desse ecossistema. O sistema consolida dados operacionais, financeiros e logísticos de múltiplas empresas, transformando planilhas legadas e _streams_ de dados em tempo real em **inteligência preditiva e visibilidade financeira unificada**.
-
-### Principais Impactos no Negócio:
-- **Fim do "Vazamento" de Custo de Manutenção**: Rastreabilidade fim a fim de ordens de serviço vinculadas ao contas a pagar direto, detectando divergências entre o orçado e o faturado.
-- **Saúde Financeira por Ativo**: Cálculo preciso de margem líquida unitária (Receita vs. Custos de Manutenção, Seguro, Imposto e Rastreamento) indicando quais veículos estão de fato gerando lucro ou prejuízo.
-- **Manutenção Inteligente e Preditiva**: Alertas baseados no cruzamento automático entre km acumulado do rastreador e o histórico de trocas de peças, reduzindo o tempo de inatividade não programado.
+Sistema single-tenant de gestão de frota com ~500 veículos. Consolida dados operacionais, financeiros e logísticos de múltiplas empresas em uma interface unificada: ordens de serviço, contratos, apólices de seguro, débitos veiculares (IPVA/Licenciamento/Multas), rastreamento e reembolsos.
 
 ---
 
-## 🏛️ Arquitetura & Escolhas Tecnológicas
+## Arquitetura
 
-A arquitetura foi desenhada visando **acoplamento fraco**, alto desempenho em processamento de dados e uma interface rica e reativa.
-
-### **Backend: Python + FastAPI + SQLAlchemy (SQLite)**
-- **Por que Python?** Pela maturidade inigualável do ecossistema de dados (com bibliotecas como **Pandas**), o que viabilizou a construção de motores eficientes para ingestão, transformação e consolidação rápida de volumes pesados de planilhas operacionais e geração de métricas complexas em milissegundos.
-- **FastAPI**: Escolhido por ser assíncrono de alta performance, fornecer documentação automática (Swagger/OpenAPI) e tipagem estrita via Pydantic, garantindo contratos robustos entre as APIs e o frontend.
-- **Estrutura Relacional (SQLAlchemy ORM)**: Mapeamento robusto das entidades vitais de negócio:
-  - `Frota`: Cadastro de ativos com metadados operacionais.
-  - `Manutencoes`: Entidade pivot que gerencia o workflow operacional da OS (aberta, em andamento, pendente, finalizada) e suas dependências sistêmicas.
-  - `NotasFiscais` & `ManutencaoParcelas`: Estrutura altamente normalizada para tratar o fracionamento financeiro de cada OS, controlando prazos, amortizações e aditamentos de pagamento.
-
-### **Frontend: React (Vite) + Tailwind CSS**
-- **Interface Premium e Focada na Experiência**: Desenvolvido com uma paleta de cores escura customizada de alto contraste, micro-animações, *Loading Skeletons* e validações reativas para maximizar a produtividade do operador sem sobrecarga visual.
-- **Modularidade**: Dividido em módulos funcionais claros (Visão Geral, Gestão de Frota, Gestão de OS/Oficina e Controle Financeiro).
-- **Contexto de Multi-Empresa**: Utilização de React Context (`CompanyContext`) propagando filtros de forma unificada. Com um único clique, toda a malha de gráficos, KPICards, listas financeiras e dados de telemetria re-renderizam instantaneamente de acordo com a empresa selecionada.
+```mermaid
+graph TD
+    Browser["Browser :5173"] --> Vite["Vite Dev Server"]
+    Vite -->|proxy /api| FastAPI["FastAPI :8000"]
+    FastAPI --> SQLAlchemy["SQLAlchemy 2 ORM"]
+    SQLAlchemy --> SQLite["locadora.db"]
+    FastAPI --> Alembic["Alembic Migrations"]
+    Alembic --> SQLite
+    FastAPI --> Excel["Locadora.xlsx (sync bidirecional)"]
+```
 
 ---
 
-## 💡 Os Desafios de Engenharia & Soluções Inteligentes
+## Stack
 
-O desenvolvimento do sistema envolveu desafios complexos de lógica de negócios e sincronia de estados. Abaixo estão alguns dos principais gargalos superados:
-
-### 1. O Motor Lógico de Sincronização Financeira
-**Desafio:** Na finalização de uma Manutenção, a somatória das notas fiscais vinculadas e de suas respectivas parcelas devia bater centavo por centavo com o custo real operacional registrado pela oficina, contornando ao mesmo tempo problemas legados de entradas parciais de faturas nas planilhas.
-**Solução:** Desenvolvemos uma camada de validação transacional local e no backend que verifica a consistência dos valores antes de permitir a transição do status da OS para "Finalizada". Implementamos ainda cálculos dinâmicos de encargos financeiros (cálculo de juros diários proporcionais e multas) para prorrogações automáticas ou trâmites de envio a cartório diretamente na interface de pagamento.
-
-### 2. Fusão de Telemetria Offline vs Online
-**Desafio:** Unir e processar em tempo real os dados brutos extraídos do rastreador GPS (Telemetria Web) com os dados agregados de custos do banco operacional para gerar índices como "Receita por KM Rodado" e avisos de ociosidade sem comprometer a performance do carregamento inicial.
-**Solução:** Arquitetamos uma camada de *Enrichment* no frontend via Custom Hooks (`useTrackerData`) que consome endpoints de telemetria de forma assíncrona em segundo plano e enriquece a grade de dados financeiros da frota à medida que as informações chegam, mantendo a interface viva e fluida enquanto processa os disparadores visuais (como alertas de alto uso e inatividade).
-
-### 3. Motor de Agregação Dinâmico Multi-Chave
-**Desafio:** Gerar KPIs financeiros agregados dinamicamente filtrados por Ano e por Empresa em tempo recorde a partir de múltiplas tabelas fatos desconexas.
-**Solução:** No backend, otimizamos o serviço central `compute.py` utilizando um mecanismo inteligente de cache em memória indexado por uma tupla contendo `(Ano, Empresa, Hash_do_Banco)`. Se os dados subjacentes não mudaram, as computações analíticas pesadas de margem e taxas de utilização são entregues de forma imediata diretamente da memória RAM.
+| Camada      | Tecnologia                                                         |
+|-------------|--------------------------------------------------------------------|
+| Backend     | FastAPI, SQLAlchemy 2, Alembic, Pydantic v2, SQLite               |
+| Frontend    | React 18, Vite, Tailwind CSS v3, React Hot Toast                  |
+| Testes      | pytest, pytest-anyio, FastAPI TestClient, SQLite in-memory        |
+| Sincronismo | openpyxl / pandas para sync bidirecional Excel ↔ SQLite           |
 
 ---
 
-## 🔧 Instalação & Setup Rápido
+## Setup
 
-### Backend (FastAPI)
-1. Acesse a pasta `/backend`
-2. Instale as dependências: `pip install -r requirements.txt`
-3. Execute o servidor de desenvolvimento: `python -m uvicorn main:app --reload --port 8000`
+### 1. Backend
 
-### Frontend (React)
-1. Acesse a pasta `/frontend`
-2. Instale as dependências: `npm install`
-3. Suba o servidor Vite: `npm run dev`
+```bash
+cd backend
+pip install -r requirements.txt
+alembic upgrade head          # aplica todas as migrations
+uvicorn main:app --reload --port 8000
+```
+
+### 2. Popular o banco com dados de demonstração
+
+O repositório não inclui o banco de dados. Para visualizar o sistema funcionando:
+
+```bash
+cd backend
+python scripts/seed.py
+# Para resetar e re-seedar do zero:
+# python scripts/seed.py --reset
+```
+
+Isso cria automaticamente: **3 empresas · 40 veículos · 6 contratos · 3 apólices de seguro · 40 rastreamentos · débitos IPVA/Licenciamento · multas de trânsito · OS finalizadas · reembolsos**.
+
+### 3. Frontend
+
+```bash
+cd frontend
+cp .env.example .env          # ajustar VITE_PRIMARY_COMPANY_SIGLA se necessário
+npm install
+npm run dev                   # porta 5173
+```
+
+### 4. Testes
+
+```bash
+cd backend
+pytest tests/ -v
+```
+
+### One-shot (Windows)
+
+```bat
+start.bat
+```
+
+Abre backend e frontend automaticamente.
 
 ---
 
-*Desenvolvido com foco em excelência operacional, demonstrando como a tecnologia resolve gaps reais de fluxo de informação em grandes frotas logísticas.*
+## Deploy em Produção (Demonstração Online)
+
+O projeto está configurado para deploy gratuito e automatizado: o backend na **Render.com** (com banco de dados SQLite e seed automático) e o frontend na **Vercel**.
+
+### Como subir sua própria demonstração online:
+
+#### 1. Backend (Render.com)
+1. Crie uma conta gratuita em [render.com](https://render.com).
+2. Clique em **New** -> **Web Service** e conecte seu repositório do GitHub.
+3. A Render detectará automaticamente o arquivo [render.yaml](render.yaml) na raiz do projeto.
+4. Aguarde o build (~2-3 minutos). O backend será inicializado, as migrações do Alembic serão executadas e os dados de teste serão populados via `seed.py` automaticamente.
+5. Copie a URL do seu serviço (ex: `https://aspen-api.onrender.com`).
+
+#### 2. Frontend (Vercel)
+1. Crie uma conta gratuita em [vercel.com](https://vercel.com).
+2. Importe o repositório do GitHub no painel da Vercel.
+3. Configure o diretório raiz (**Root Directory**) como `frontend`.
+4. Adicione a variável de ambiente (**Environment Variable**):
+   - `VITE_API_BASE_URL` = URL do backend gerada no Render (ex: `https://aspen-api.onrender.com`).
+5. Clique em **Deploy**.
+6. Copie a URL gerada pelo Vercel (ex: `https://aspen.vercel.app`).
+
+#### 3. Configurar CORS no Render
+1. No painel da Render, vá em **Environment** no seu serviço web.
+2. Atualize a variável `CORS_ORIGINS` adicionando a URL do seu frontend gerada pelo Vercel.
+3. A Render fará o redeploy automático para aplicar a mudança de CORS.
+
+> [!NOTE]
+> **Limitação do Plano Gratuito (Render)**: Por usar a categoria gratuita da Render, o backend "dorme" após 15 minutos sem requisições. O primeiro acesso após esse período pode levar cerca de 30 a 50 segundos para inicializar (um aviso amigável de carregamento será exibido na tela enquanto o servidor acorda). Além disso, os dados fictícios do banco de dados SQLite serão recriados a cada reinicialização automática.
+
+---
+
+## Decisões Arquiteturais
+
+### Por que SQLite?
+
+Sistema single-tenant de gestão de frota com ~500 veículos. SQLite elimina infraestrutura: backups são um simples `cp locadora.db backup.db`. Trocar para PostgreSQL exige apenas mudar `DATABASE_URL` em `backend/config.py` — SQLAlchemy abstrai o dialeto completamente.
+
+### Auth omitida propositalmente
+
+Aplicação interna sem usuários anônimos. A decisão foi consciente: adicionar JWT/OAuth seria overengineering para o contexto. O README documenta isso explicitamente para entrevistadores.
+
+### Alembic para migrations
+
+Todas as mudanças de schema são versionadas em `backend/alembic/versions/`:
+- **0001** — baseline no-op (congela o estado inicial)
+- **0002** — consolida migrations legadas ad-hoc
+- **0003** — genericiza nomes de empresas (remove hardcodes de siglas)
+
+Nunca editar tabelas manualmente.
+
+### N+1 eliminado com bulk maps
+
+Padrão estabelecido em `backend/routers/contratos.py` (`_build_maps`) e replicado em `seguro`, `debitos`, `rastreamento` e `reembolsos`: 3 queries bulk com `IN (...)` substituem 1 query por registro, resultando em complexidade O(1) de queries independente do volume de dados.
+
+### Sincronismo Excel ↔ SQLite
+
+O sistema legado usava planilhas como fonte de dados primária. A migração foi incremental: `sync_excel_to_db()` importa OS históricas do Excel; `sync_db_to_excel()` escreve OS finalizadas de volta. Ambas são idempotentes. As funções rodam no startup via `asyncio.to_thread` para não bloquear o event loop.
+
+---
+
+## Estrutura do Projeto
+
+```
+backend/
+├── alembic/                 # Migrations versionadas
+│   └── versions/
+├── routers/                 # Endpoints por domínio
+│   ├── contratos.py
+│   ├── debitos.py           # IPVA, Licenciamento, Multas
+│   ├── fleet.py
+│   ├── rastreamento.py
+│   ├── reembolsos.py
+│   ├── seguro.py
+│   └── orders.py
+├── services/
+│   ├── excel_io.py          # Sync bidirecional com Locadora.xlsx
+│   ├── os_helpers.py        # Geração atômica de numero_os, validação
+│   └── regras.py            # Constantes de negócio centralizadas
+├── tests/
+│   ├── conftest.py          # Fixtures: DB in-memory, seed_empresa, seed_frota
+│   ├── test_contratos.py
+│   ├── test_debitos.py
+│   ├── test_rastreamento.py
+│   └── test_seguro.py
+├── models.py                # SQLAlchemy ORM (entidades completas)
+├── schemas.py               # Pydantic v2 (request/response)
+└── main.py                  # FastAPI app + lifespan
+
+frontend/
+├── src/
+│   ├── contexts/
+│   │   └── EnumsContext.jsx # Enums do backend via React Context
+│   ├── utils/
+│   │   ├── api.js           # Chamadas axios centralizadas
+│   │   └── asyncHandler.js  # withErrorToast — wrapper de erros async
+│   └── pages/               # Um arquivo por módulo de negócio
+└── .env.example
+```
+
+---
+
+## Licença
+
+MIT — veja [LICENSE](LICENSE).

@@ -352,6 +352,10 @@ def pagar_reembolso(
     r = db.query(models.Reembolso).filter(models.Reembolso.id == id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Reembolso não encontrado")
+    if r.status_recebimento == "Recebido":
+        raise HTTPException(status_code=409, detail="Reembolso já foi marcado como recebido")
+    if not payload.valor_recebido or payload.valor_recebido <= 0:
+        raise HTTPException(status_code=422, detail="Valor recebido deve ser maior que zero")
 
     r.valor_recebido     = payload.valor_recebido
     r.data_entrada       = payload.data_recebimento

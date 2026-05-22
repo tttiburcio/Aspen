@@ -1,6 +1,9 @@
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/api' })
+const BASE = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api`
+  : '/api'
+const api = axios.create({ baseURL: BASE })
 
 api.interceptors.response.use(
   res => res,
@@ -26,6 +29,7 @@ export const getMaintenanceAnalysis = (year, placa)        => api.get('/maintena
 export const getImplementoAnalysis  = (year, empresa)      => api.get('/maintenance_analysis/implemento', { params: { year, ...(empresa ? { empresa } : {}) } }).then(r => r.data)
 export const getIntervalosAnalysis  = (sistema)            => api.get('/maintenance_analysis/intervalos', { params: { sistema } }).then(r => r.data)
 export const getCompanies           = ()                    => api.get('/companies').then(r => r.data)
+export const getEnums               = ()                    => api.get('/enums').then(r => r.data)
 
 // ── Reembolsos ───────────────────────────────────────────────────────
 export const getReembolsos          = (params = {})         => api.get('/db/reembolsos', { params }).then(r => r.data)
@@ -72,8 +76,28 @@ export const patchMulta          = (id, payload)         => api.patch(`/db/multa
 export const criarNicMulta       = (id)                  => api.post(`/db/multas/${id}/nic`).then(r => r.data)
 export const patchFrotaRestricoes = (id, payload)        => api.patch(`/db/frota/${id}/restricoes`, payload).then(r => r.data)
 
+// ── Rastreamento ─────────────────────────────────────────────────────
+export const getRastreamento        = (params = {})  => api.get('/db/rastreamento', { params }).then(r => r.data)
+export const getRastreamentoSummary = (params = {})  => api.get('/db/rastreamento/summary', { params }).then(r => r.data)
+export const criarRastreamento      = (payload)      => api.post('/db/rastreamento', payload).then(r => r.data)
+export const patchRastreamento      = (id, payload)  => api.patch(`/db/rastreamento/${id}`, payload).then(r => r.data)
+export const deletarRastreamento    = (id)           => api.delete(`/db/rastreamento/${id}`)
+
+// ── Seguro Veicular ──────────────────────────────────────────────────
+export const getSeguro             = (params = {})       => api.get('/db/seguro', { params }).then(r => r.data)
+export const getSeguroSummary      = (params = {})       => api.get('/db/seguro/summary', { params }).then(r => r.data)
+export const criarSeguro           = (payload)           => api.post('/db/seguro', payload).then(r => r.data)
+export const patchSeguro           = (id, payload)       => api.patch(`/db/seguro/${id}`, payload).then(r => r.data)
+export const deletarSeguro         = (id)                => api.delete(`/db/seguro/${id}`)
+export const adicionarVeiculoSeguro = (id, payload)      => api.post(`/db/seguro/${id}/veiculos`, payload).then(r => r.data)
+export const patchVeiculoSeguro    = (sv_id, payload)    => api.patch(`/db/seguro/veiculo/${sv_id}`, payload).then(r => r.data)
+export const removerVeiculoSeguro  = (sv_id)             => api.delete(`/db/seguro/veiculo/${sv_id}`)
+export const getCorretores         = ()                  => api.get('/db/corretores').then(r => r.data)
+export const criarCorretor         = (payload)           => api.post('/db/corretores', payload).then(r => r.data)
+
 // ── Banco SQLite — CRUD legado (manutenções) ─────────────────────────
 export const dbListFrota           = ()                    => api.get('/db/frota').then(r => r.data)
+export const dbListFrotaAll        = ()                    => api.get('/db/frota/all').then(r => r.data)
 export const dbPneuSpecs           = (placa)               => api.get(`/db/pneu-specs/${encodeURIComponent(placa)}`).then(r => r.data)
 export const dbListManutencoes     = (status, placa)       => api.get('/db/manutencoes', { params: { ...(status ? { status } : {}), ...(placa ? { placa } : {}) } }).then(r => r.data)
 export const dbGetManutencao       = (id)                  => api.get(`/db/manutencoes/${id}`).then(r => r.data)

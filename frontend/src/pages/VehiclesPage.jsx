@@ -18,15 +18,15 @@ const MAPWS_BASE = 'http://localhost:5174'
 const STATUS_COLORS = {
   'ATIVO':      'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'LOCADO':     'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'FROTA':      'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'ADM':        'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'FROTA':      'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'ADM':        'bg-blue-50 text-blue-900 border border-blue-200 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'ADMINISTRAÇÃO': 'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
   'ADMINISTRACAO': 'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'VENDIDO':    'bg-gray-50 text-gray-900 border border-gray-200 dark:bg-gray-900/40 dark:text-gray-300 dark:border-gray-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'DESATIVADO': 'bg-red-50 text-red-900 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'MANUT':      'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-600 dark:border-amber-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'INATIVO':    'bg-red-50 text-red-900 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'PARADO':     'bg-red-50 text-red-900 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'VENDIDO':    'bg-gray-50 text-gray-900 border border-gray-200 dark:text-gray-300 dark:border-gray-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'DESATIVADO': 'bg-red-50 text-red-900 border border-red-200 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'MANUT':      'bg-amber-50 text-amber-600 border border-amber-200 dark:text-amber-600 dark:border-amber-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'INATIVO':    'bg-red-50 text-red-900 border border-red-200 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
+  'PARADO':     'bg-red-50 text-red-900 border border-red-200 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
 }
 
 function statusBadge(status) {
@@ -62,14 +62,14 @@ const COLUMNS = [
   { key: 'receita_total',      label: 'Receita',      align: 'left',  fmt: v => <span className="font-mono text-g-300 text-sm font-semibold tabular-nums">{brl(v)}</span> },
   { key: 'custo_total',        label: 'Custo',        align: 'left',  fmt: v => <span className="font-mono text-g-500 text-sm tabular-nums">{brl(v)}</span> },
   { key: 'margem',             label: 'Margem',       align: 'left',  fmt: v => (
-    <span className={`font-mono font-semibold text-sm tabular-nums ${v >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>{brl(v)}</span>
+    <span className={`font-semibold text-sm tabular-nums ${v >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>{brl(v)}</span>
   )},
   { key: 'margem_pct',         label: '% Margem',     align: 'left',  fmt: v => (
     <span className={`text-sm font-bold tabular-nums ${v >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>{pct(v)}</span>
   )},
   { key: 'dias_trabalhado',    label: 'Dias Trab.',   align: 'left',  fmt: v => <span className="text-g-500 text-sm tabular-nums">{dias(v)}</span> },
   { key: 'receita_por_dia',    label: 'R$/Dia',       align: 'left',  fmt: v => v > 0
-    ? <span className="font-mono text-sm text-g-400 tabular-nums">{brlShort(v)}</span>
+    ? <span className="text-sm text-g-400 tabular-nums">{brlShort(v)}</span>
     : <span className="text-g-700 text-sm">—</span> },
   { key: 'custo_manutencao',   label: 'Manutenção',   align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
   { key: 'custo_seguro',       label: 'Seguro',       align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
@@ -85,7 +85,8 @@ export default function VehiclesPage({
   trackerFilter = null, onTrackerFilterConsumed,
 }) {
   const { selectedCompany } = useCompanies()
-  const isTkj = selectedCompany?.sigla?.toUpperCase() === 'TKJ'
+  const primarySigla = import.meta.env.VITE_PRIMARY_COMPANY_SIGLA || 'EMPRESA_A'
+  const isTkj = selectedCompany?.sigla?.toUpperCase() === primarySigla.toUpperCase()
 
   // Enrich vehicles with tracker km so the _km_mes column is sortable
   const { trackerOnline, trackerUsage, getVehicleKm, highUsageVehicles, idleVehicles } = useTrackerData({ year })
@@ -128,7 +129,7 @@ export default function VehiclesPage({
     vehicles.map(v => {
       const isAdm = v.placa && (v.placa.toUpperCase() === 'TJW7I85' || v.placa.toUpperCase() === 'ERA6A58')
       const sVal = isAdm || (v.status && v.status.toUpperCase() === 'ADM') ? 'Administração' : v.status
-      // No contexto TKJ, todos os veículos em operação exibem 'Frota' (são propriedade TKJ)
+      // Para a empresa primária, todos os veículos em operação exibem 'Frota'
       const displayStatus = isTkj && !EXCEPTIONS_STATUS.has((sVal || '').toUpperCase())
         ? 'Frota'
         : sVal
@@ -446,13 +447,13 @@ export default function VehiclesPage({
                     TOTAIS ({filtered.length})
                   </td>
                   <td className="td">
-                    <span className="font-mono text-g-300 font-semibold tabular-nums text-sm">{brl(totals.receita_total)}</span>
+                    <span className="text-g-300 font-semibold tabular-nums text-sm">{brl(totals.receita_total)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-g-500 tabular-nums text-sm">{brl(totals.custo_total)}</span>
+                    <span className="text-g-500 tabular-nums text-sm">{brl(totals.custo_total)}</span>
                   </td>
                   <td className="td">
-                    <span className={`font-mono font-bold tabular-nums text-sm ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
+                    <span className={`font-bold tabular-nums text-sm ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
                       {brl(totals.margem)}
                     </span>
                   </td>
@@ -466,16 +467,16 @@ export default function VehiclesPage({
                   </td>
                   <td className="td text-g-700 text-sm">—</td>
                   <td className="td">
-                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_manutencao)}</span>
+                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_manutencao)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_seguro)}</span>
+                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_seguro)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_impostos)}</span>
+                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_impostos)}</span>
                   </td>
                   <td className="td">
-                    <span className="font-mono text-sm text-g-500 tabular-nums">{brl(totals.custo_rastreamento)}</span>
+                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_rastreamento)}</span>
                   </td>
                   <td className="td text-g-700 text-sm">—</td>
                 </tr>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { getYears, getKpis, getMonthly, getVehicles, getRegions, runSync } from './utils/api'
 import Sidebar from './components/Sidebar'
@@ -10,8 +10,11 @@ import ReembolsosPage from './pages/ReembolsosPage'
 import FaturamentoPage from './pages/FaturamentoPage'
 import ContratosPage from './pages/ContratosPage'
 import DebitsPage from './pages/DebitsPage'
+import RastreamentoPage from './pages/RastreamentoPage'
+import SeguroPage from './pages/SeguroPage'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { CompanyProvider, useCompanies, GRUPO } from './contexts/CompanyContext'
+import { EnumsProvider } from './contexts/EnumsContext'
 import { Loader2, Plus, Menu, RefreshCw, ChevronDown, Building2, Bell, AlertCircle } from 'lucide-react'
 
 function CompanyHeaderSelector() {
@@ -37,12 +40,11 @@ function CompanyHeaderSelector() {
           {options.map((c, i) => {
             const active = selectedCompany?.id === c.id
             return (
-              <>
+              <React.Fragment key={c.id}>
                 {i === 1 && (
-                  <div key="sep" className="border-t border-g-800 my-0.5" />
+                  <div className="border-t border-g-800 my-0.5" />
                 )}
                 <button
-                  key={c.id}
                   onClick={() => { setSelectedCompany(c); setOpen(false) }}
                   className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                     active ? 'text-g-100 font-bold bg-g-850' : 'text-g-500 hover:bg-g-850 hover:text-g-300'
@@ -53,7 +55,7 @@ function CompanyHeaderSelector() {
                     ? <span className="flex items-center gap-1.5"><span className="text-[9px] font-bold px-1 py-0.5 rounded bg-g-800 text-g-500 uppercase tracking-wider">grupo</span>{c.sigla}</span>
                     : c.sigla || c.nome}
                 </button>
-              </>
+              </React.Fragment>
             )
           })}
         </div>
@@ -73,6 +75,8 @@ const PAGE_TITLE = {
   faturamento:  'Faturamento — Faturas & Impostos',
   contratos:    'Contratos — Administração',
   debitos:      'Débitos Veiculares — IPVA, Licenciamento & Multas',
+  rastreamento: 'Rastreamento — Contratos & Veículos',
+  seguro:       'Seguro — Apólices & Veículos',
 }
 
 function AppContent() {
@@ -89,6 +93,7 @@ function AppContent() {
   const [regions, setRegions]   = useState([])
   const [region, setRegion]     = useState(null)
   const [loading, setLoading]   = useState(true)
+  const [isSlowConnection, setIsSlowConnection] = useState(false)
   const [error, setError]       = useState(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen]     = useState(false)
@@ -96,12 +101,22 @@ function AppContent() {
   const [trackerFilter, setTrackerFilter]           = useState(null)
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSlowConnection(true)
+    }, 3000)
+
     getYears()
       .then(d => {
+        clearTimeout(timer)
+        setIsSlowConnection(false)
         setYears(d.years)
         if (d.years.length > 0) setYear(d.years[0])
       })
-      .catch(() => setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando.'))
+      .catch(() => {
+        clearTimeout(timer)
+        setIsSlowConnection(false)
+        setError('Não foi possível conectar ao servidor. Verifique se o backend está rodando.')
+      })
   }, [])
 
   const loadData = useCallback(async (y, r, emp) => {
@@ -153,13 +168,43 @@ function AppContent() {
             <AlertCircle className="w-8 h-8 text-g-500" />
           </div>
           <h2 className="text-g-100 text-xl font-semibold mb-2">Erro de Conexão</h2>
-          <p className="text-g-400 text-sm">{error}</p>
-          <p className="text-g-600 text-xs mt-4">
-            Inicie o backend:{' '}
-            <code className="text-g-300 bg-g-800 px-1.5 py-0.5 rounded font-mono text-xs">
-              uvicorn main:app --reload
-            </code>
-          </p>
+          <p className="text-g-400 text-sm mb-4">{error}</p>
+          {import.meta.env.VITE_API_BASE_URL ? (
+            <p className="text-g-600 text-xs">
+              Se o problema persistir, o serviço do backend ({import.meta.env.VITE_API_BASE_URL}) pode estar temporariamente indisponível.
+            </p>
+          ) : (
+            <p className="text-g-600 text-xs">
+              Inicie o backend:{' '}
+              <code className="text-g-300 bg-g-800 px-1.5 py-0.5 rounded font-mono text-xs">
+                uvicorn main:app --reload
+              </code>
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (!years.length && loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-g-950">
+        <div className="text-center p-8 max-w-md animate-fade-in flex flex-col items-center">
+          <Loader2 className="w-10 h-10 text-g-500 animate-spin mb-4" />
+          <p className="text-g-300 text-sm font-medium">Conectando ao servidor...</p>
+          {isSlowConnection && (
+            <div className="mt-6 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-200/90 text-xs text-left animate-fade-up max-w-sm">
+              <div className="flex gap-2 items-start">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold mb-1">Servidor em Modo de Demonstração (Render)</p>
+                  <p className="text-amber-300/70 leading-relaxed">
+                    O backend está hospedado no plano gratuito da Render. Por inatividade, o servidor desliga e pode levar de 30 a 50 segundos para inicializar. Por favor, aguarde um instante enquanto o banco é populado com dados fictícios.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -318,6 +363,18 @@ function AppContent() {
               <DebitsPage year={year} />
             </div>
           )}
+
+          {page === 'rastreamento' && (
+            <div key={`rastreamento-${empresa}`} className="animate-page-fade">
+              <RastreamentoPage year={year} />
+            </div>
+          )}
+
+          {page === 'seguro' && (
+            <div key={`seguro-${empresa}`} className="animate-page-fade">
+              <SeguroPage />
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -343,7 +400,9 @@ export default function App() {
         }}
       />
       <CompanyProvider>
-        <AppContent />
+        <EnumsProvider>
+          <AppContent />
+        </EnumsProvider>
       </CompanyProvider>
     </ThemeProvider>
   )

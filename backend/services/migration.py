@@ -1,18 +1,12 @@
 """
-Migrações de schema — executadas uma vez no startup.
-
-Contém:
-- _migrate_parcelas_prorrogacao(): adiciona colunas novas + relaxa NOT NULL
-- _migrate_faturamento_imposto(): adiciona campos de imposto sobre faturamento
-- _migrate_1to1_safe(): migração idempotente manutencao → OS
+Legacy migration helpers — kept for reference only.
+Schema migrations are now managed by Alembic (backend/alembic/versions/).
+These functions are no longer called at startup.
 """
-import json
 import logging
 import sqlite3
 
-from database import DB_PATH, SessionLocal
-import models
-from services.os_helpers import _infer_tipo_nf, _status_os_from_manutencao
+from database import DB_PATH
 
 logger = logging.getLogger("locadora")
 
@@ -92,6 +86,104 @@ def _migrate_frota_renavam():
         logger.info("_migrate_frota_renavam: renavam adicionada")
     except Exception:
         pass
+    finally:
+        con.close()
+
+
+def _migrate_rastreamento_fields():
+    """Adiciona/expande campos do rastreamento (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        for col, typedef in [
+            ("empresa_rastreamento", "VARCHAR(100)"),
+            ("numero_contrato",      "VARCHAR(50)"),
+            ("modelo_rastreador",    "VARCHAR(100)"),
+            ("tem_bloqueador",       "BOOLEAN DEFAULT 0"),
+            ("data_inicio",         "DATE"),
+            ("observacoes",         "TEXT"),
+            ("valor_mensal",        "NUMERIC(14,2)"),
+            ("valor_total_contrato","NUMERIC(14,2)"),
+            ("dias_sem_sinal",      "INTEGER DEFAULT 0"),
+        ]:
+            try:
+                con.execute(f"ALTER TABLE rastreamento ADD COLUMN {col} {typedef}")
+                con.commit()
+                logger.info(f"_migrate_rastreamento_fields: {col} adicionada")
+            except Exception:
+                pass
+    finally:
+        con.close()
+
+
+def _migrate_rastreamento_dia_vencimento():
+    """Adiciona coluna dia_vencimento à tabela rastreamento (idempotente)."""
+    con = sqlite3.connect(str(DB_PATH))
+    try:
+        try:
+            con.execute("ALTER TABLE rastreamento ADD COLUMN dia_vencimento INTEGER")
+            con.commit()
+            logger.info("_migrate_rastreamento_dia_vencimento: coluna adicionada")
+        except Exception:
+            pass
+    finally:
+        con.close()
+
+
+def _migrate_rastreamento_drop_valor():
+    """Remove a coluna legada `valor` da tabela rastreamento (idempotente via recriação)."""
+    con = sqlite3.connect(str(DB_PATH))
+    con.isolation_level = None
+    try:
+        # Verifica se a coluna ainda existe
+        cols = [r[1] for r in con.execute("PRAGMA table_info('rastreamento')").fetchall()]
+        if "valor" not in cols:
+            return  # já removida
+
+        logger.info("_migrate_rastreamento_drop_valor: recriando tabela sem coluna valor...")
+        con.execute("PRAGMA foreign_keys=OFF")
+        con.execute("BEGIN")
+        try:
+            con.execute("DROP TABLE IF EXISTS rastreamento_new")
+            con.execute("""
+                CREATE TABLE rastreamento_new (
+                    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id_veiculo           INTEGER REFERENCES frota(id),
+                    id_empresa           INTEGER REFERENCES empresas(id),
+                    empresa_rastreamento VARCHAR(100),
+                    numero_contrato      VARCHAR(50),
+                    modelo_rastreador    VARCHAR(100),
+                    tem_bloqueador       BOOLEAN DEFAULT 0,
+                    valor_mensal         NUMERIC(14,2),
+                    valor_total_contrato NUMERIC(14,2),
+                    data_inicio          DATE,
+                    vencimento           DATE,
+                    dias_sem_sinal       INTEGER DEFAULT 0,
+                    observacoes          TEXT
+                )
+            """)
+            # Copia dados preservando valor_mensal (usa valor como fallback se valor_mensal nulo)
+            con.execute("""
+                INSERT INTO rastreamento_new
+                    (id, id_veiculo, id_empresa, empresa_rastreamento, numero_contrato,
+                     modelo_rastreador, tem_bloqueador, valor_mensal, valor_total_contrato,
+                     data_inicio, vencimento, dias_sem_sinal, observacoes)
+                SELECT id, id_veiculo, id_empresa, empresa_rastreamento, numero_contrato,
+                       modelo_rastreador, tem_bloqueador,
+                       COALESCE(valor_mensal, valor),
+                       valor_total_contrato,
+                       data_inicio, vencimento, dias_sem_sinal, observacoes
+                FROM rastreamento
+            """)
+            con.execute("DROP TABLE rastreamento")
+            con.execute("ALTER TABLE rastreamento_new RENAME TO rastreamento")
+            con.execute("COMMIT")
+            logger.info("_migrate_rastreamento_drop_valor: coluna valor removida com sucesso")
+        except Exception as e:
+            con.execute("ROLLBACK")
+            logger.error("Erro em _migrate_rastreamento_drop_valor: %s", e)
+            raise
+        finally:
+            con.execute("PRAGMA foreign_keys=ON")
     finally:
         con.close()
 
@@ -341,186 +433,3 @@ def _migrate_parcelas_prorrogacao():
         con.close()
 
 
-def _migrate_1to1_safe():
-    """Migração 1:1 idempotente — cada manutencao vira uma OS com um item.
-
-    Parcelas são agrupadas pela mesma nota (numero_nf, nota) em uma única NF.
-    """
-    db = SessionLocal()
-    try:
-        manuts = db.query(models.Manutencao).all()
-        usados: set[str] = set(
-            x[0] for x in db.query(models.OrdemServico.numero_os)
-            .filter(models.OrdemServico.numero_os.isnot(None)).all()
-        )
-        for m in manuts:
-            # Idempotência: pula se já migrado
-            existe = (
-                db.query(models.OrdemServico)
-                .filter(models.OrdemServico.migrado_de_ids.like(f'%[{m.id}]%')
-                        | models.OrdemServico.migrado_de_ids.like(f'%[{m.id},%')
-                        | models.OrdemServico.migrado_de_ids.like(f'%,{m.id}]%')
-                        | models.OrdemServico.migrado_de_ids.like(f'%,{m.id},%'))
-                .first()
-            )
-            if existe:
-                continue
-
-            # Desambigua numero_os: se já usado no legado, sufixa com -L{id}
-            numero_os = None
-            if m.status_manutencao == "finalizada" and m.id_ord_serv:
-                candidato = str(m.id_ord_serv).strip() or None
-                if candidato:
-                    if candidato in usados:
-                        candidato = f"{candidato}-L{m.id}"
-                    usados.add(candidato)
-                    numero_os = candidato
-
-            os = models.OrdemServico(
-                numero_os=numero_os,
-                status_os=_status_os_from_manutencao(m.status_manutencao or "em_andamento"),
-                id_veiculo=m.id_veiculo,
-                placa=m.placa,
-                modelo=m.modelo,
-                id_empresa=m.id_empresa,
-                id_contrato=m.id_contrato,
-                implemento=m.implemento,
-                fornecedor=m.fornecedor,
-                tipo_manutencao=m.tipo_manutencao,
-                categoria=m.categoria,
-                total_os=m.total_os,
-                responsavel_tec=m.responsavel_tec,
-                indisponivel=bool(m.indisponivel),
-                km=m.km,
-                data_entrada=m.data_entrada,
-                data_execucao=m.data_execucao,
-                prox_km=m.prox_km,
-                prox_data=m.prox_data,
-                observacoes=m.observacoes,
-                migrado_de_ids=json.dumps([m.id]),
-            )
-            db.add(os)
-            db.flush()
-
-            os_items_map = {}
-            if m.parcelas:
-                for p in m.parcelas:
-                    sys_t = p.sistema_temp or m.sistema
-                    srv_t = p.servico_temp or m.servico
-                    desc_t = p.descricao_temp or m.descricao
-                    k_item = (sys_t, srv_t, desc_t)
-                    
-                    if k_item not in os_items_map:
-                        item = models.OsItem(
-                            os_id=os.id,
-                            sistema=sys_t,
-                            servico=srv_t,
-                            descricao=desc_t,
-                            qtd_itens=m.qtd_itens,
-                            posicao_pneu=m.posicao_pneu,
-                            qtd_pneu=m.qtd_pneu,
-                            espec_pneu=m.espec_pneu,
-                            marca_pneu=m.marca_pneu,
-                            manejo_pneu=m.manejo_pneu,
-                            )
-                        db.add(item)
-                        db.flush()
-                        os_items_map[k_item] = item
-            else:
-                item = models.OsItem(
-                    os_id=os.id,
-                    sistema=m.sistema,
-                    servico=m.servico,
-                    descricao=m.descricao,
-                    qtd_itens=m.qtd_itens,
-                    posicao_pneu=m.posicao_pneu,
-                    qtd_pneu=m.qtd_pneu,
-                    espec_pneu=m.espec_pneu,
-                    marca_pneu=m.marca_pneu,
-                    manejo_pneu=m.manejo_pneu,
-                    manutencao_origem_id=m.id,
-                )
-                db.add(item)
-                db.flush()
-                os_items_map[(m.sistema, m.servico, m.descricao)] = item
-
-            # Agrupa parcelas pela mesma nota
-            grupos: dict = {}
-            for p in m.parcelas:
-                chave = (p.nf_ordem, p.nota or f"__solo_{p.id}", p.fornecedor, p.empresa_temp)
-                grupos.setdefault(chave, []).append(p)
-
-            nfs_criadas = []
-            for (nf_ordem, _, _forn, _emp), parcelas_grupo in grupos.items():
-                tipo, needs_review = _infer_tipo_nf(m)
-                primeira = parcelas_grupo[0]
-                valor_nf = (
-                    float(primeira.valor_item_total)
-                    if primeira.valor_item_total
-                    else sum(float(p.valor_parcela or 0) for p in parcelas_grupo)
-                )
-                _emp_sigla = primeira.empresa_temp or m.empresa
-                _emp_id_row = db.execute(
-                    __import__("sqlalchemy").text(
-                        "SELECT id FROM empresas WHERE UPPER(sigla) = UPPER(:s)"
-                    ), {"s": str(_emp_sigla or "").strip()}
-                ).fetchone() if _emp_sigla else None
-                nf = models.NotaFiscal(
-                    os_id=os.id,
-                    numero_nf=primeira.nota,
-                    tipo_nf=tipo,
-                    tipo_nf_needs_review=needs_review,
-                    fornecedor=primeira.fornecedor or m.fornecedor,
-                    id_empresa=_emp_id_row[0] if _emp_id_row else None,
-                    valor_total_nf=valor_nf,
-                    data_emissao=m.data_execucao,
-                    )
-                db.add(nf)
-                db.flush()
-                nfs_criadas.append(nf)
-
-                item_parcelas = {}
-                for p in parcelas_grupo:
-                    k_item = (p.sistema_temp or m.sistema, p.servico_temp or m.servico, p.descricao_temp or m.descricao)
-                    item_parcelas.setdefault(k_item, []).append(p)
-
-                for k_item, p_list in item_parcelas.items():
-                    o_item = os_items_map.get(k_item)
-                    primeira_p = p_list[0]
-                    valor_nf_item = (
-                        float(primeira_p.valor_item_total)
-                        if primeira_p.valor_item_total
-                        else sum(float(p.valor_parcela or 0) for p in p_list)
-                    )
-                    nf_item = models.NfItem(
-                        nf_id=nf.id,
-                        os_item_id=o_item.id if o_item else None,
-                        quantidade=1,
-                        valor_unitario=valor_nf_item,
-                        valor_total_item=valor_nf_item,
-                    )
-                    db.add(nf_item)
-
-                for p in parcelas_grupo:
-                    p.nf_id = nf.id
-
-            empresas = set(str(nf.id_empresa) for nf in nfs_criadas if nf.id_empresa)
-            fornecedores = set(nf.fornecedor for nf in nfs_criadas if nf.fornecedor)
-            
-            if len(empresas) == 1:
-                try:
-                    os.id_empresa = int(list(empresas)[0])
-                except (ValueError, TypeError):
-                    pass
-                
-            if len(fornecedores) > 1:
-                os.fornecedor = " / ".join(list(fornecedores))
-            elif len(fornecedores) == 1:
-                os.fornecedor = list(fornecedores)[0]
-
-            db.commit()
-    except Exception as e:
-        db.rollback()
-        logger.error("[migration 1:1] ERRO: %s", e)
-    finally:
-        db.close()

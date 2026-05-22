@@ -17,7 +17,7 @@ import json as _json
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sf, text
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel
 from datetime import date
 from decimal import Decimal as D
@@ -49,7 +49,9 @@ def _calc_encargo_oficial(valor, vencimento: date, tipo: str) -> D:
 router = APIRouter(tags=["Débitos Veiculares"])
 
 
-def _sync_multas_aggregate(db: Session, id_veiculo: int, exercicio: int) -> None:
+def _sync_multas_aggregate(
+    db: Session, id_veiculo: int, exercicio: int, id_empresa: int | None = None
+) -> None:
     """Recalcula e persiste valor_multas/encargo_multas no debito_documental.
 
     Chamado após qualquer mutação na tabela multas (create, patch, nic) para
@@ -67,7 +69,7 @@ def _sync_multas_aggregate(db: Session, id_veiculo: int, exercicio: int) -> None
           AND exercicio    = :ano
           AND status_multa NOT IN ('Pago', 'Cancelado')
     """), {"vid": id_veiculo, "ano": exercicio}).fetchone()
-    db.execute(text("""
+    updated = db.execute(text("""
         UPDATE debitos_documentais
         SET valor_multas   = :v,
             encargo_multas = :e
@@ -77,6 +79,15 @@ def _sync_multas_aggregate(db: Session, id_veiculo: int, exercicio: int) -> None
         "e": float(result[1]) if result else 0.0,
         "vid": id_veiculo, "ano": exercicio,
     })
+    if updated.rowcount == 0:
+        db.execute(text("""
+            INSERT INTO debitos_documentais (id_veiculo, id_empresa, exercicio, valor_multas, encargo_multas)
+            VALUES (:vid, :eid, :ano, :v, :e)
+        """), {
+            "vid": id_veiculo, "eid": id_empresa, "ano": exercicio,
+            "v": float(result[0]) if result else 0.0,
+            "e": float(result[1]) if result else 0.0,
+        })
 
 _CAMINHAO_TIPAGENS = {
     "cavalo mecânico", "truck", "toco", "bitruck", "semi-reboque",
@@ -107,6 +118,7 @@ def _bulk_maps(db: Session, vids: list, eids: list) -> tuple[dict, dict]:
             frota_map[f.id] = {
                 "placa":      f.placa,
                 "modelo":     f.modelo,
+                "ano_modelo": getattr(f, "ano_modelo", None),
                 "tipagem":    f.tipagem,
                 "restricoes": getattr(f, "restricoes", None),
                 "renavam":    getattr(f, "renavam", None),
@@ -124,6 +136,7 @@ def _enrich_debito(row, frota_map: dict, emp_map: dict, ativ_map: dict) -> dict:
         "id_veiculo":    row.id_veiculo,
         "placa":         f.get("placa", "—"),
         "modelo":        f.get("modelo", "—"),
+        "ano_modelo":    f.get("ano_modelo") or None,
         "renavam":       f.get("renavam") or "—",
         "tipagem":       f.get("tipagem", "—"),
         "tipo_veiculo":  _classify_vehicle(f.get("tipagem", "")),
@@ -268,7 +281,7 @@ class MultaUpdate(BaseModel):
     valor_com_desconto: Optional[float] = None
     tipo_multa:         Optional[str]   = None
     # Fase 5 — Pagamento
-    status_multa:       Optional[str]   = None
+    status_multa:       Optional[Literal["Pendente","Pago","Cancelado","Contestado","Indicado"]] = None
     data_pagamento:     Optional[date]  = None
     valor_pago:         Optional[float] = None
     encargo:            Optional[float] = None
@@ -466,6 +479,12 @@ def list_multas(
     if mids:
         mids_set = set(mids)
 
+        # Valor cobrado de cada multa = valor_com_desconto se existir, senão valor_multa
+        multa_val_map = {
+            r.id: float(r.valor_com_desconto or r.valor_multa or 0)
+            for r in rows
+        }
+
         def _add_to_map(mid, valor, status):
             if mid not in reimb_map:
                 reimb_map[mid] = {"qtd": 0, "valor": 0.0, "status": status}
@@ -474,7 +493,6 @@ def list_multas(
             if status == "Recebido":
                 reimb_map[mid]["status"] = "Recebido"
 
-        # Busca todos os reembolsos relevantes de uma vez
         all_reimb = (
             db.query(
                 models.Reembolso.id_multa,
@@ -489,16 +507,14 @@ def list_multas(
         )
 
         for id_multa, ids_json, valor, status in all_reimb:
-            # Reembolso com múltiplas multas — usa ids_multa_json, ignora id_multa
+            # Reembolso com múltiplas multas — cada multa usa seu próprio valor
             if ids_json:
                 try:
                     ids = [i for i in _json.loads(ids_json) if i in mids_set]
                 except Exception:
                     ids = []
-                if ids:
-                    valor_por_multa = float(valor or 0) / len(_json.loads(ids_json))
-                    for mid in ids:
-                        _add_to_map(mid, valor_por_multa, status)
+                for mid in ids:
+                    _add_to_map(mid, multa_val_map.get(mid, 0), status)
             # Reembolso legado (campo direto)
             elif id_multa and id_multa in mids_set:
                 _add_to_map(id_multa, valor, status)
@@ -562,7 +578,7 @@ def criar_multa(payload: MultaCreate, db: Session = Depends(get_db)):
         desconto_pct=D(str(desc_pct)), valor_com_desconto=D(str(val_desc)),
     )
     db.add(row); db.commit(); db.refresh(row)
-    _sync_multas_aggregate(db, row.id_veiculo, row.exercicio)
+    _sync_multas_aggregate(db, row.id_veiculo, row.exercicio, row.id_empresa)
     db.commit()
     fm, em = _bulk_maps(db, [row.id_veiculo], [row.id_empresa] if row.id_empresa else [])
     return _enrich_multa(row, fm, em, {}, {})
@@ -584,7 +600,7 @@ def patch_multa(multa_id: int, payload: MultaUpdate, db: Session = Depends(get_d
     for field, value in updates.items():
         setattr(row, field, value)
     db.commit(); db.refresh(row)
-    _sync_multas_aggregate(db, row.id_veiculo, row.exercicio)
+    _sync_multas_aggregate(db, row.id_veiculo, row.exercicio, row.id_empresa)
     db.commit()
     fm, em = _bulk_maps(db, [row.id_veiculo], [row.id_empresa] if row.id_empresa else [])
     cliente_map: dict = {}
@@ -631,7 +647,7 @@ def criar_nic(multa_id: int, db: Session = Depends(get_db)):
         multa_origem_id=multa_id,
     )
     db.add(nic); db.commit(); db.refresh(nic)
-    _sync_multas_aggregate(db, nic.id_veiculo, nic.exercicio)
+    _sync_multas_aggregate(db, nic.id_veiculo, nic.exercicio, nic.id_empresa)
     db.commit()
     fm, em = _bulk_maps(db, [nic.id_veiculo], [nic.id_empresa] if nic.id_empresa else [])
     return _enrich_multa(nic, fm, em, {}, {})

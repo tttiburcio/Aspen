@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { X, Loader2, Wrench, Plus, Trash2 } from 'lucide-react'
-import { dbListFrota, dbAbrirOs, dbAtualizarOs, dbPneuSpecs } from '../../utils/api'
+import { dbListFrotaAll, dbAbrirOs, dbAtualizarOs, dbPneuSpecs } from '../../utils/api'
 
 const TIPOS       = ['Preventiva', 'Corretiva']
 const CATEGORIAS  = ['Serviço', 'Compra']
@@ -78,7 +78,7 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
   )
 
   useEffect(() => {
-    dbListFrota()
+    dbListFrotaAll()
       .then(setFrota)
       .catch(() => setError('Não foi possível carregar a frota'))
       .finally(() => setLoadingFrota(false))

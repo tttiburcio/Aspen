@@ -9,15 +9,15 @@ import toast from 'react-hot-toast'
 import {
   getDebitos, getDebitosSummary, patchDebito,
   getMultas, getMultasSummary, criarMulta, patchMulta,
-  criarNicMulta, dbListFrota,
+  criarNicMulta, dbListFrotaAll,
 } from '../utils/api'
 import { brl, dateBR } from '../utils/format'
 import { useCompanies } from '../contexts/CompanyContext'
+import { useEnums } from '../contexts/EnumsContext'
 import EmptyState from '../components/EmptyState'
 import Skeleton from '../components/Skeleton'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const ORGAOS = ['DETRAN-SP', 'PRF', 'SEMOB', 'CET-SP', 'ANTT', 'CETESB', 'DETRAN-MG', 'DER-SP']
 
 // Tabela de encargos conforme legislação brasileira vigente (mai/2026)
 // IPVA/Licen:  multa 0,33%/dia (teto 20%) + SELIC 1,09%/mês (mín. 1%/mês) — Lei 9.430/96 + ICMS-SP
@@ -66,6 +66,20 @@ function urgencyScore(d) {
   if (isOverdue)  return 1000 + (d.atividade_score || 0)
   if (isApproach) return 500  + (d.atividade_score || 0)
   return d.atividade_score || 0
+}
+
+// ─── Placa Mercosul ───────────────────────────────────────────────────────────
+function PlacaMercosul({ placa }) {
+  return (
+    <div className="border border-gray-400 rounded bg-white shadow-sm overflow-hidden" style={{ width: 136 }}>
+      <div className="bg-[#003399] h-3.5 w-full flex items-center justify-center">
+        <span className="text-[7px] text-white font-bold tracking-[0.2em]">BRASIL</span>
+      </div>
+      <div className="px-3 py-1 text-center">
+        <span className="font-mono text-[17px] font-black text-gray-900 tracking-[0.1em] leading-none">{placa}</span>
+      </div>
+    </div>
+  )
 }
 
 // ─── Design atoms ─────────────────────────────────────────────────────────────
@@ -571,6 +585,7 @@ function CadastrarBoletoModal({ multa, onClose, onSaved }) {
 
 // ─── Modal: Nova Multa (3 steps) ──────────────────────────────────────────────
 function NovaMultaModal({ frota, onClose, onSaved }) {
+  const { orgaos_emissores: ORGAOS = [] } = useEnums()
   const hoje = new Date().toISOString().slice(0, 10)
   const [step, setStep] = useState(1)
   const [idVeiculo, setIdVeiculo] = useState('')
@@ -1051,6 +1066,11 @@ export default function DebitsPage({ year }) {
   const [fDocStatus,  setFDocStatus] = useState('')   // '' | 'vencido' | 'proximo' | 'pendente' | 'pago'
   const [fDocTipo,    setFDocTipo]   = useState('')   // '' | 'caminhao' | 'carro'
   const [fDocRestr,   setFDocRestr]  = useState(false)
+  // Filtros aba documentacao (cards)
+  const [fDCrlv,   setFDCrlv]   = useState('')    // '' | 'vencido' | 'a_vencer' | 'valido'
+  const [fDAntig,  setFDAntig]  = useState(false) // com débitos anteriores
+  const [fDMulta,  setFDMulta]  = useState(false) // com multas ativas
+  const [fDRestr,  setFDRestr]  = useState(false) // com restrição
 
   // ── Estados multas ──
   const [multas,      setMultas]     = useState([])
@@ -1062,6 +1082,7 @@ export default function DebitsPage({ year }) {
   const [fMComun,    setFMComun]    = useState('')   // '' | 'enviado' | 'pendente'
 
   const [frota, setFrota] = useState([])
+  const [allDebitos, setAllDebitos] = useState(null) // all-year debitos for documentacao tab
 
   // Modais
   const [modalSelecionarPgto, setModalSelecionarPgto] = useState(null)
@@ -1080,6 +1101,7 @@ export default function DebitsPage({ year }) {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setAllDebitos(null) // força recarregamento dos dados da aba Documentação
     try {
       const [deb, sdeb, mult, smult] = await Promise.all([
         getDebitos(params), getDebitosSummary(params),
@@ -1093,7 +1115,14 @@ export default function DebitsPage({ year }) {
   }, [params])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { dbListFrota().then(d => setFrota(d || [])) }, [])
+  useEffect(() => { dbListFrotaAll().then(d => setFrota(d || [])) }, [])
+
+  // Lazy-load all-year debitos when documentacao tab is first opened
+  useEffect(() => {
+    if (tab === 'documentacao' && allDebitos === null) {
+      getDebitos(empresa ? { empresa } : {}).then(d => setAllDebitos(d || []))
+    }
+  }, [tab, allDebitos, empresa])
 
   // ─── Filtros documentais ───────────────────────────────────────────────────
   const sortedDebitos = useMemo(() => {
@@ -1153,6 +1182,166 @@ export default function DebitsPage({ year }) {
   const cntMVencido       = useMemo(() => multas.filter(m => m.status_multa === 'Vencido').length, [multas])
   const cntMSemComunicado = useMemo(() => multas.filter(m => !m.comunicado_enviado && m.status_multa !== 'Pago').length, [multas])
 
+  // ─── Documentação cards (todos os anos) ────────────────────────────────────
+  const docCards = useMemo(() => {
+    if (!allDebitos) return null
+    const currentYear = new Date().getFullYear()
+    const byPlaca = {}
+    for (const d of allDebitos) {
+      if (!byPlaca[d.placa]) byPlaca[d.placa] = []
+      byPlaca[d.placa].push(d)
+    }
+    // Multas ativas por placa (sempre sobre situação atual, independente do year filter)
+    const multaQtd = {}, multaVal = {}
+    for (const m of multas) {
+      if (!['Pago', 'Cancelado'].includes(m.status_multa)) {
+        multaQtd[m.placa] = (multaQtd[m.placa] || 0) + 1
+        multaVal[m.placa] = (multaVal[m.placa] || 0) + (m.valor_com_desconto || m.valor_multa || 0)
+      }
+    }
+    return Object.entries(byPlaca).map(([placa, recs]) => {
+      const sorted = [...recs].sort((a, b) => b.exercicio - a.exercicio)
+      const latest = sorted[0]
+      const older  = sorted.slice(1)
+
+      // ── CRLV: exercício = ano anterior ao 1º ano com IPVA ou licen pendente;
+      //    se todos pagos mas há multas ativas, fica no ano anterior;
+      //    se tudo quitado sem multas, CRLV = ano atual ──
+      const multasAtivas = multaQtd[placa] || 0
+      const multaValor   = multaVal[placa] || 0
+      const ipvaPendYears  = sorted.filter(r => r.status_ipva !== 'Pago').map(r => r.exercicio)
+      const licenPendYears = sorted.filter(r => r.status_licenciamento !== 'Pago').map(r => r.exercicio)
+      const allPendYears   = [...new Set([...ipvaPendYears, ...licenPendYears])].sort((a, b) => a - b)
+      const oldestPend     = allPendYears.length > 0 ? Math.min(...allPendYears) : null
+      const crlvExercicio  = oldestPend !== null
+        ? (oldestPend - 1)
+        : (multasAtivas > 0 ? latest.exercicio - 1 : latest.exercicio)
+      const licenVencStr  = latest.vencimento_licenciamento
+      const licenVencDays = daysDiff(licenVencStr)
+      let crlvStatus
+      if (oldestPend !== null && oldestPend < latest.exercicio) {
+        crlvStatus = 'vencido'
+      } else if (oldestPend !== null || multasAtivas > 0) {
+        crlvStatus = (licenVencDays !== null && licenVencDays < 0) ? 'vencido' : 'a_vencer'
+      } else {
+        crlvStatus = 'valido'
+      }
+      // Bloqueios: resumo compacto do que impede a atualização do doc
+      const crlvBloqueios = []
+      if (ipvaPendYears.length === 1)
+        crlvBloqueios.push(`IPVA ${ipvaPendYears[0]}`)
+      else if (ipvaPendYears.length > 1)
+        crlvBloqueios.push(`IPVA: ${ipvaPendYears.length} anos`)
+      if (licenPendYears.length === 1)
+        crlvBloqueios.push(`Licen. ${licenPendYears[0]}`)
+      else if (licenPendYears.length > 1)
+        crlvBloqueios.push(`Licen.: ${licenPendYears.length} anos`)
+      if (multasAtivas > 0)
+        crlvBloqueios.push(`${multasAtivas} multa${multasAtivas > 1 ? 's' : ''} ativa${multasAtivas > 1 ? 's' : ''}`)
+
+      // ── Todos os anos registrados ─────────────────────────────────────────
+      const _docStatus = (pago, venc) => {
+        if (pago) return 'pago'
+        const d = daysDiff(venc)
+        return (d !== null && d < 0) ? 'vencido' : 'a_vencer'
+      }
+      const allYearData = sorted.map(r => {
+        const ipvaVenc  = r.vencimento_ipva || null
+        const licenVenc = r.vencimento_licenciamento || null
+        return {
+          exercicio:   r.exercicio,
+          ipvaValor:   r.valor_ipva || 0,
+          ipvaPago:    r.status_ipva === 'Pago',
+          ipvaStatus:  _docStatus(r.status_ipva === 'Pago', ipvaVenc),
+          ipvaVenc,
+          licenValor:  r.valor_licenciamento || 0,
+          licenPago:   r.status_licenciamento === 'Pago',
+          licenStatus: _docStatus(r.status_licenciamento === 'Pago', licenVenc),
+          licenVenc,
+        }
+      })
+
+      // ── Apenas ano atual (para cards sem débitos anteriores) ──────────────
+      const latestYearData = allYearData.length > 0 ? allYearData[0] : null
+
+      // ── Pendências para totalização ───────────────────────────────────────
+      const debitosAntigos = older.filter(r => r.status_ipva !== 'Pago' || r.status_licenciamento !== 'Pago')
+      const ipvaPend = sorted
+        .filter(r => r.status_ipva !== 'Pago')
+        .map(r => ({ exercicio: r.exercicio, valor: (r.valor_ipva || 0) + (r.encargo_ipva || 0) }))
+      const licenPend = sorted
+        .filter(r => r.status_licenciamento !== 'Pago')
+        .map(r => ({ exercicio: r.exercicio, valor: (r.valor_licenciamento || 0) + (r.encargo_licenciamento || 0) }))
+      const totalIpva  = ipvaPend.reduce((s, x) => s + x.valor, 0)
+      const totalLicen = licenPend.reduce((s, x) => s + x.valor, 0)
+
+      // Valor total pago no ano atual (para o rodapé)
+      const currentYearPaidTotal = (latest.status_ipva === 'Pago' ? (latest.valor_ipva || 0) : 0)
+                                 + (latest.status_licenciamento === 'Pago' ? (latest.valor_licenciamento || 0) : 0)
+
+      // ── Registro do ano selecionado (visualização histórica) ─────────────
+      const selectedRec  = year ? sorted.find(r => r.exercicio === year) : null
+      const isPastView   = year != null && year < currentYear && selectedRec != null
+      const pastYearPaid = isPastView
+        && selectedRec.status_ipva === 'Pago'
+        && selectedRec.status_licenciamento === 'Pago'
+      const selectedYearLicenPago = selectedRec?.status_licenciamento === 'Pago'
+      const pastYearValorIpva  = selectedRec ? (selectedRec.valor_ipva  || 0) : 0
+      const pastYearValorLicen = selectedRec ? (selectedRec.valor_licenciamento || 0) : 0
+      const pastYearDebtTotal  = isPastView && !pastYearPaid
+        ? (ipvaPend.filter(x => x.exercicio === year).reduce((s, x) => s + x.valor, 0)
+         + licenPend.filter(x => x.exercicio === year).reduce((s, x) => s + x.valor, 0))
+        : 0
+
+      return {
+        placa,
+        modelo:         latest.modelo,
+        anoModelo:      latest.ano_modelo || null,
+        empresa:        latest.empresa_sigla,
+        exercicio:      latest.exercicio,
+        crlvExercicio,
+        crlvStatus,
+        crlvBloqueios,
+        licenVencStr,
+        allYearData,
+        latestYearData,
+        debitosAntigos,
+        ipvaPend,
+        licenPend,
+        totalIpva,
+        totalLicen,
+        multasAtivas,
+        multaValor,
+        valorTotal: totalIpva + totalLicen + multaValor,
+        currentYearPaidTotal,
+        restricoes:  latest.restricoes,
+        renavam:     latest.renavam,
+        isPastView,
+        pastYearPaid,
+        selectedYearLicenPago,
+        pastYearValorIpva,
+        pastYearValorLicen,
+        pastYearTotal:  pastYearValorIpva + pastYearValorLicen,
+        pastYearDebtTotal,
+        selectedYear:   year,
+      }
+    }).sort((a, b) => {
+      const score = c => (c.debitosAntigos.length > 0 ? 4 : 0) + (c.crlvStatus === 'vencido' ? 2 : 0) + (c.multasAtivas > 0 ? 1 : 0)
+      const diff = score(b) - score(a)
+      return diff !== 0 ? diff : a.placa.localeCompare(b.placa)
+    })
+  }, [allDebitos, multas, year])
+
+  const filteredDocCards = useMemo(() => {
+    if (!docCards) return null
+    let r = docCards
+    if (fDCrlv)  r = r.filter(c => c.crlvStatus === fDCrlv)
+    if (fDAntig) r = r.filter(c => c.debitosAntigos.length > 0)
+    if (fDMulta) r = r.filter(c => c.multasAtivas > 0)
+    if (fDRestr) r = r.filter(c => c.restricoes && c.restricoes.trim())
+    return r
+  }, [docCards, fDCrlv, fDAntig, fDMulta, fDRestr])
+
   // Next action for multa row
   const multaNextAction = (m) => {
     if (['Pago', 'Cancelado'].includes(m.status_multa)) return null
@@ -1203,10 +1392,10 @@ export default function DebitsPage({ year }) {
       {/* Toolbar: Tabs + Search */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-g-850 border border-g-800 rounded-xl p-1">
-          {['documentais', 'multas'].map(t => (
+          {['documentais', 'multas', 'documentacao'].map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${tab === t ? 'bg-g-900 text-g-200 shadow-sm border border-g-800' : 'text-g-600 hover:text-g-400'}`}>
-              {t === 'documentais' ? 'IPVA & Licenciamento' : 'Multas de Trânsito'}
+              {t === 'documentais' ? 'IPVA & Licenciamento' : t === 'multas' ? 'Multas de Trânsito' : 'Documentação'}
               {t === 'multas' && (summaryMult?.qtd_pendente ?? 0) > 0 && (
                 <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold badge-red rounded-full">{summaryMult.qtd_pendente}</span>
               )}
@@ -1270,6 +1459,21 @@ export default function DebitsPage({ year }) {
           <FilterChip label={`Sem comunicado${cntMSemComunicado > 0 ? ` (${cntMSemComunicado})` : ''}`} active={fMComun === 'pendente'} onClick={() => setFMComun(v => v === 'pendente' ? '' : 'pendente')} color="indigo" />
           <FilterChip label="Comunicado enviado" active={fMComun === 'enviado'} onClick={() => setFMComun(v => v === 'enviado' ? '' : 'enviado')} color="green" />
           <span className="ml-auto text-g-600 text-xs font-mono">{filteredMultas.length} registros</span>
+        </div>
+      )}
+
+      {tab === 'documentacao' && docCards !== null && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-g-600 text-[10px] font-semibold uppercase tracking-wider mr-1">CRLV:</span>
+          <FilterChip label="Todos"    active={fDCrlv === ''} onClick={() => setFDCrlv('')} />
+          <FilterChip label="Vencido"  active={fDCrlv === 'vencido'}  onClick={() => setFDCrlv(v => v === 'vencido'  ? '' : 'vencido')}  color="red" />
+          <FilterChip label="A vencer" active={fDCrlv === 'a_vencer'} onClick={() => setFDCrlv(v => v === 'a_vencer' ? '' : 'a_vencer')} color="amber" />
+          <FilterChip label="Válido"   active={fDCrlv === 'valido'}   onClick={() => setFDCrlv(v => v === 'valido'   ? '' : 'valido')}   color="green" />
+          <span className="text-g-700 mx-1">·</span>
+          <FilterChip label="Débitos anteriores" active={fDAntig} onClick={() => setFDAntig(v => !v)} color="red" />
+          <FilterChip label="Com multas"         active={fDMulta} onClick={() => setFDMulta(v => !v)} color="amber" />
+          <FilterChip label="Com restrição"      active={fDRestr} onClick={() => setFDRestr(v => !v)} color="red" />
+          <span className="ml-auto text-g-600 text-xs font-mono">{filteredDocCards?.length ?? 0} veículos</span>
         </div>
       )}
 
@@ -1466,6 +1670,237 @@ export default function DebitsPage({ year }) {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ═══════ TAB: DOCUMENTAÇÃO ═══════ */}
+      {tab === 'documentacao' && (
+        <div className="flex flex-col gap-4">
+          {filteredDocCards === null ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[1,2,3,4,5,6,7,8].map(i => <Skeleton key={i} className="h-44 rounded-xl" />)}
+            </div>
+          ) : filteredDocCards.length === 0 ? (
+            <div className="p-8"><EmptyState icon={FileText} title="Sem dados" message="Nenhum veículo encontrado para os filtros selecionados." /></div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredDocCards.map(c => {
+                const emDia      = !c.isPastView && c.valorTotal === 0 && c.multasAtivas === 0
+                const restricoes = c.restricoes
+                  ? c.restricoes.split(',').map(s => s.trim()).filter(Boolean)
+                  : []
+                const fmtAnos = arr => arr.map(y => y.exercicio).join(', ')
+
+                // Badge CRLV — ano e label variam por contexto de visualização
+                const crlvDot = c.isPastView
+                  ? (c.selectedYearLicenPago ? 'bg-emerald-500' : 'bg-red-500')
+                  : c.crlvStatus === 'valido' ? 'bg-emerald-500'
+                  : c.crlvStatus === 'a_vencer' ? 'bg-amber-400'
+                  : 'bg-red-500'
+                const crlvYear  = c.isPastView ? c.selectedYear : c.crlvExercicio
+                const crlvLabel = c.isPastView
+                  ? (c.selectedYearLicenPago ? 'Quitado' : 'Vencido')
+                  : c.crlvStatus === 'valido' ? 'Válido'
+                  : c.crlvStatus === 'a_vencer' ? 'A vencer'
+                  : 'Vencido'
+
+                return (
+                  <div key={c.placa}
+                    className="rounded-xl border border-gray-200 bg-white flex flex-col overflow-hidden shadow-sm hover:shadow-md transition-all">
+
+                    {/* ── Cabeçalho ── */}
+                    <div className="px-4 pt-4 pb-3 flex flex-col gap-2">
+                      {/* Placa + CRLV badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <PlacaMercosul placa={c.placa} />
+                        <div className="flex flex-col items-end gap-1" style={{ maxWidth: 'calc(100% - 148px)' }}>
+                          <span className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50 text-gray-500 font-medium whitespace-nowrap">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${crlvDot}`} />
+                            CRLV {crlvYear}: {crlvLabel}
+                          </span>
+                          {!c.isPastView && c.crlvBloqueios.length > 0 && (
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {c.crlvBloqueios.map((b, i) => (
+                                <span key={i} className="text-[9px] leading-tight text-gray-400 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 whitespace-nowrap">
+                                  {b}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Modelo, ano + empresa */}
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-700 truncate">
+                          {c.modelo || '—'}{c.anoModelo ? `, ${c.anoModelo}` : ''}
+                        </p>
+                        <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded font-medium shrink-0">{c.empresa}</span>
+                      </div>
+
+                      {/* RENAVAM */}
+                      <p className="text-xs text-gray-400 font-mono -mt-0.5">
+                        {c.renavam ? `RENAVAM ${c.renavam}` : 'RENAVAM —'}
+                      </p>
+                    </div>
+
+                    {/* ── Divisor ── */}
+                    <div className="border-t border-gray-100" />
+
+                    {/* ── Detalhamento financeiro ── */}
+                    <div className="px-4 py-3 flex flex-col divide-y divide-gray-50">
+                      {c.isPastView ? (
+                        // Modo histórico: apenas o ano selecionado
+                        c.allYearData.filter(yr => yr.exercicio === c.selectedYear).flatMap(yr => {
+                          const rows = []
+                          if (yr.ipvaValor > 0) rows.push(
+                            <div key={`ipva-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
+                              <span className="text-sm text-gray-500">IPVA ({yr.exercicio})</span>
+                              <span className="text-sm font-semibold text-gray-700 tabular-nums font-mono">{brl(yr.ipvaValor)}</span>
+                            </div>
+                          )
+                          if (yr.licenValor > 0) rows.push(
+                            <div key={`licen-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
+                              <span className="text-sm text-gray-500">Licenciamento ({yr.exercicio})</span>
+                              <span className="text-sm font-semibold text-gray-700 tabular-nums font-mono">{brl(yr.licenValor)}</span>
+                            </div>
+                          )
+                          return rows
+                        })
+                      ) : c.debitosAntigos.length === 0 ? (
+                        // Sem débitos anteriores: mostra só o ano atual com indicador pago/pendente
+                        c.latestYearData ? c.allYearData.slice(0, 1).flatMap(yr => {
+                          const rows = []
+                          if (yr.ipvaValor > 0) rows.push(
+                            <div key={`ipva-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
+                              <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                                {yr.ipvaStatus === 'pago' ? <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" /> : yr.ipvaStatus === 'a_vencer' ? <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> : <X className="w-3 h-3 text-red-500 shrink-0" />}
+                                IPVA ({yr.exercicio})
+                                {yr.ipvaStatus !== 'pago' && yr.ipvaVenc && <span className="text-xs text-gray-400 font-mono ml-1">{dateBR(yr.ipvaVenc)}</span>}
+                              </span>
+                              <span className={`text-sm font-semibold tabular-nums font-mono ${yr.ipvaPago ? 'text-gray-400' : 'text-gray-700'}`}>
+                                {brl(yr.ipvaValor)}
+                              </span>
+                            </div>
+                          )
+                          if (yr.licenValor > 0) rows.push(
+                            <div key={`licen-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
+                              <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                                {yr.licenStatus === 'pago' ? <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" /> : yr.licenStatus === 'a_vencer' ? <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> : <X className="w-3 h-3 text-red-500 shrink-0" />}
+                                Licenciamento ({yr.exercicio})
+                                {yr.licenStatus !== 'pago' && yr.licenVenc && (
+                                  <span className="text-xs text-gray-400 font-mono ml-1">{dateBR(yr.licenVenc)}</span>
+                                )}
+                              </span>
+                              <span className={`text-sm font-semibold tabular-nums font-mono ${yr.licenPago ? 'text-gray-400' : 'text-gray-700'}`}>
+                                {brl(yr.licenValor)}
+                              </span>
+                            </div>
+                          )
+                          return rows
+                        }) : []
+                      ) : (
+                        // Com débitos anteriores: mostra todos os anos
+                        <>
+                          {c.allYearData.flatMap(yr => {
+                            const rows = []
+                            if (yr.ipvaValor > 0) rows.push(
+                              <div key={`ipva-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
+                                <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                                  {yr.ipvaStatus === 'pago' ? <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" /> : yr.ipvaStatus === 'a_vencer' ? <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> : <X className="w-3 h-3 text-red-500 shrink-0" />}
+                                  IPVA ({yr.exercicio})
+                                  {yr.ipvaStatus !== 'pago' && yr.ipvaVenc && <span className="text-xs text-gray-400 font-mono ml-1">{dateBR(yr.ipvaVenc)}</span>}
+                                </span>
+                                <span className={`text-sm font-semibold tabular-nums font-mono ${yr.ipvaPago ? 'text-gray-400' : 'text-gray-700'}`}>
+                                  {brl(yr.ipvaValor)}
+                                </span>
+                              </div>
+                            )
+                            if (yr.licenValor > 0) rows.push(
+                              <div key={`licen-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
+                                <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                                  {yr.licenStatus === 'pago' ? <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" /> : yr.licenStatus === 'a_vencer' ? <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" /> : <X className="w-3 h-3 text-red-500 shrink-0" />}
+                                  Licenciamento ({yr.exercicio})
+                                  {yr.licenStatus !== 'pago' && yr.licenVenc && <span className="text-xs text-gray-400 font-mono ml-1">{dateBR(yr.licenVenc)}</span>}
+                                </span>
+                                <span className={`text-sm font-semibold tabular-nums font-mono ${yr.licenPago ? 'text-gray-400' : 'text-gray-700'}`}>
+                                  {brl(yr.licenValor)}
+                                </span>
+                              </div>
+                            )
+                            return rows
+                          })}
+                          {c.multasAtivas > 0 && (
+                            <div className="flex justify-between items-center py-1.5">
+                              <span className="text-sm text-gray-500">Multas ({c.multasAtivas} ativa{c.multasAtivas > 1 ? 's' : ''})</span>
+                              <span className="text-sm font-semibold text-gray-700 tabular-nums font-mono">{brl(c.multaValor)}</span>
+                            </div>
+                          )}
+                          {emDia && (
+                            <div className="flex justify-between items-center py-1.5">
+                              <span className="text-sm text-gray-500">Situação</span>
+                              <span className="text-sm text-gray-400">Regular</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {/* Multas ativas (sempre, exceto modo histórico) */}
+                      {!c.isPastView && c.debitosAntigos.length === 0 && c.multasAtivas > 0 && (
+                        <div className="flex justify-between items-center py-1.5">
+                          <span className="text-sm text-gray-500">Multas ({c.multasAtivas} ativa{c.multasAtivas > 1 ? 's' : ''})</span>
+                          <span className="text-sm font-semibold text-gray-700 tabular-nums font-mono">{brl(c.multaValor)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Restrições ── */}
+                    {restricoes.length > 0 && (
+                      <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                        {restricoes.map(r => (
+                          <span key={r} className="border border-gray-200 text-gray-500 bg-gray-50 text-xs px-2 py-1 rounded-md font-medium">
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* ── Rodapé: Débitos / Quitado / Pago atual ── */}
+                    {c.isPastView && c.pastYearPaid ? (
+                      <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-t border-gray-100 mt-auto">
+                        <span className="text-sm text-gray-500 font-medium">Quitado em {c.selectedYear}</span>
+                        {c.pastYearTotal > 0 && <span className="text-base font-bold text-gray-700 tabular-nums font-mono">{brl(c.pastYearTotal)}</span>}
+                      </div>
+                    ) : c.isPastView && c.pastYearDebtTotal > 0 ? (
+                      <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-t border-gray-100 mt-auto">
+                        <span className="text-sm text-gray-500 font-medium">Total de Débitos</span>
+                        <span className="text-base font-bold text-slate-800 tabular-nums font-mono">{brl(c.pastYearDebtTotal)}</span>
+                      </div>
+                    ) : !c.isPastView ? (
+                      <div className="bg-gray-50 px-4 py-3 flex flex-col gap-1 border-t border-gray-100 mt-auto">
+                        {c.valorTotal > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500 font-medium">Total de Débitos</span>
+                            <span className="text-base font-bold text-slate-800 tabular-nums font-mono">{brl(c.valorTotal)}</span>
+                          </div>
+                        )}
+                        {c.currentYearPaidTotal > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-400">Pago em {c.exercicio}</span>
+                            <span className="text-sm font-semibold text-gray-500 tabular-nums font-mono">{brl(c.currentYearPaidTotal)}</span>
+                          </div>
+                        )}
+                        {c.valorTotal === 0 && c.currentYearPaidTotal === 0 && emDia && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-400">Sem débitos pendentes</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

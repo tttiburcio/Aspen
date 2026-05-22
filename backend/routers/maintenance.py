@@ -28,7 +28,7 @@ def list_manutencoes(
     if placa:
         q = q.filter(models.Manutencao.placa == placa.upper())
     if empresa:
-        # aceita sigla (TKJ) ou id inteiro; normaliza para id_empresa
+        # aceita sigla ou id inteiro; normaliza para id_empresa
         from sqlalchemy import text as _t
         row = db.execute(_t("SELECT id FROM empresas WHERE UPPER(sigla) = UPPER(:s)"), {"s": empresa}).fetchone()
         if row:

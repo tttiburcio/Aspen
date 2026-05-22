@@ -885,7 +885,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
         <div ref={reportRef} className="p-6 bg-white text-black w-[190mm]">
           <div className="flex items-center justify-between mb-8 border-b-2 border-g-100 pb-4">
             <div className="flex items-center gap-4">
-              <img src={(String(filterEmpresa).toUpperCase() === 'TKJ' || String(selectedCompany?.sigla || '').toUpperCase() === 'TKJ') ? '/tkj.png' : '/logo.png'} alt="Logo" className="h-16 w-auto object-contain" />
+              <img src="/logo.png" alt="Logo" className="h-16 w-auto object-contain" />
               <div>
                 <h1 className="text-2xl font-bold text-g-100 uppercase tracking-tight">Relatório Financeiro</h1>
                 <p className="text-sm text-g-600 font-medium">Manutenção · Exercício {year}</p>

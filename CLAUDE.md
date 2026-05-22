@@ -94,7 +94,32 @@ Escala customizada `g-*` (verde escuro) definida em `tailwind.config.js`:
 - Texto: `text-g-50` (claro) → `text-g-400` (atenuado) → `text-g-600` (muted)
 - Cores fixas por categoria nos gráficos: locação `#22c55e`, reembolso `#34d399`, manutenção `#f97316`, seguro `#ef4444`, impostos `#a855f7`, rastreamento `#f59e0b`
 
+## Migrations (Alembic)
+
+O schema é gerenciado pelo Alembic. **Nunca editar tabelas manualmente.**
+
+Aplicar migrations pendentes:
+```bash
+cd backend && alembic upgrade head
+```
+
+Criar nova migration após editar `models.py`:
+```bash
+cd backend && alembic revision --autogenerate -m "descricao_curta"
+# revisar o arquivo gerado em alembic/versions/ antes de aplicar
+alembic upgrade head
+```
+
+Reverter uma migration:
+```bash
+cd backend && alembic downgrade -1
+```
+
+Migrations ficam em `backend/alembic/versions/`. O arquivo `backend/alembic/env.py` importa `DATABASE_URL` de `database.py` e `Base.metadata` de `models.py`.
+
+---
+
 ## Deployment
 
-O repositório remoto é `https://github.com/tttiburcio/locadora-dashboard.git` (branch `master` → `main`).  
-**Deploy automático:** ao concluir qualquer tarefa, fazer commit + push para o GitHub sem aguardar confirmação do usuário.
+O repositório remoto é `https://github.com/tttiburcio/locadora-dashboard.git` (branch `main`).
+**Não fazer commit ou push automático** — o usuário faz isso manualmente quando necessário.

@@ -383,10 +383,11 @@ class Seguro(Base):
 class SeguroVeiculo(Base):
     __tablename__ = "seguro_veiculo"
 
-    id            = Column(Integer, primary_key=True, autoincrement=True)
-    apolice_id    = Column(Integer, ForeignKey("seguro.id"),  nullable=False)
-    id_veiculo    = Column(Integer, ForeignKey("frota.id"),   nullable=False)
-    valor_veiculo = Column(Numeric(14, 2), nullable=False)   # prêmio anual deste veículo
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    apolice_id       = Column(Integer, ForeignKey("seguro.id"),  nullable=False)
+    id_veiculo       = Column(Integer, ForeignKey("frota.id"),   nullable=False)
+    valor_veiculo    = Column(Numeric(14, 2), nullable=False)   # prêmio anual deste veículo
+    cobre_implemento = Column(Boolean, nullable=False, default=False)
 
     apolice = relationship("Seguro",  back_populates="veiculos")
     veiculo = relationship("Frota")
@@ -549,11 +550,20 @@ class Multa(Base):
 class Rastreamento(Base):
     __tablename__ = "rastreamento"
 
-    id         = Column(Integer, primary_key=True, autoincrement=True)
-    vencimento = Column(Date)
-    id_veiculo = Column(Integer, ForeignKey("frota.id"))
-    valor      = Column(Numeric(14, 2))
-    id_empresa = Column(Integer, ForeignKey("empresas.id"))
+    id                   = Column(Integer, primary_key=True, autoincrement=True)
+    id_veiculo           = Column(Integer, ForeignKey("frota.id"))
+    id_empresa           = Column(Integer, ForeignKey("empresas.id"))
+    empresa_rastreamento = Column(String(100))   # Sascar, Onixsat, LoJack...
+    numero_contrato      = Column(String(50))    # identificador do contrato
+    modelo_rastreador    = Column(String(100))   # modelo do equipamento
+    tem_bloqueador       = Column(Boolean, default=False)
+    valor_mensal         = Column(Numeric(14, 2))   # custo mensal por veículo
+    valor_total_contrato = Column(Numeric(14, 2))   # valor total do contrato firmado
+    data_inicio          = Column(Date)             # início do rastreamento
+    vencimento           = Column(Date)             # validade do contrato
+    dia_vencimento       = Column(Integer)          # dia do mês de cobrança (1-28)
+    dias_sem_sinal       = Column(Integer, default=0)  # dias sem dados (rastreador com problema)
+    observacoes          = Column(Text)
 
 
 # ─────────────────────────────────────────────

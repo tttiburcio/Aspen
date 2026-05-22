@@ -43,9 +43,9 @@ function StatusBadge({ status }) {
 function PgtoBadge({ forma }) {
   if (!forma) return <span className="text-g-700 text-[10px]">—</span>
   const cls = forma === 'PIX'
-    ? 'bg-indigo-500/10 text-indigo-400 border-indigo-700/30'
-    : 'bg-amber-500/10 text-amber-600 border-amber-700/30'
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls}`}>{forma}</span>
+    ? 'bg-blue-500/10 text-blue-400 border-blue-700/30'
+    : 'bg-purple-500/10 text-purple-600 border-purple-700/30'
+  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{forma}</span>
 }
 
 function DaysChip({ days }) {
@@ -229,7 +229,7 @@ export default function ContratosPage() {
                       </td>
                       {/* Cliente */}
                       <td className="px-3 py-3">
-                        <p className="text-g-100 font-semibold text-sm leading-snug">{c.nome_cliente}</p>
+                        <p className="text-black-100 font-semibold text-sm leading-snug">{c.nome_cliente}</p>
                         {c.cidade_operacao && (
                           <p className="text-g-700 text-[10px] mt-0.5">
                             {c.cidade_operacao}{c.estado_operacao ? ` · ${c.estado_operacao}` : ''}
@@ -261,7 +261,7 @@ export default function ContratosPage() {
                         ) : (
                           <div className="flex items-center gap-1 flex-wrap">
                             {c.placas?.slice(0, 3).map(p => (
-                              <span key={p} className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-g-850 border border-g-800 text-g-400">{p}</span>
+                              <span key={p} className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-g-850 border border-g-800 text-g-400">{p}</span>
                             ))}
                             {(c.placas?.length || 0) > 3 && (
                               <span className="text-g-600 text-[10px] font-semibold">+{c.placas.length - 3}</span>
@@ -271,19 +271,19 @@ export default function ContratosPage() {
                       </td>
                       {/* Início */}
                       <td className="px-3 py-3">
-                        <span className="font-mono text-xs text-g-400">{dateBR(c.data_inicio)}</span>
+                        <span className="text-xs text-g-400">{dateBR(c.data_inicio)}</span>
                       </td>
                       {/* Prev. Enc. */}
                       <td className="px-3 py-3">
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-mono text-xs text-g-400">{dateBR(c.data_fim)}</span>
+                          <span className="text-xs text-g-400">{dateBR(c.data_fim)}</span>
                           {c.status === 'Ativo' && <DaysChip days={c.dias_restantes} />}
                         </div>
                       </td>
                       {/* Encerrado em */}
                       <td className="px-3 py-3">
                         {c.status !== 'Ativo'
-                          ? <span className="font-mono text-xs text-g-500">{dateBR(c.data_encerramento)}</span>
+                          ? <span className="text-xs text-g-500">{dateBR(c.data_encerramento)}</span>
                           : <span className="text-g-800 text-xs">—</span>
                         }
                       </td>

@@ -399,17 +399,3 @@ def deletar_os_item(os_id: int, item_id: int, db: Session = Depends(get_db)):
     db.delete(item)
     db.commit()
 
-
-# ── Auditoria / Integridade ──────────────────────────────────────────
-
-@router.get("/api/db/parcelas/integridade", response_model=schemas.IntegridadeResponse)
-def integridade_parcelas(db: Session = Depends(get_db)):
-    """Retorna parcelas órfãs (sem nf_id) — devem ser zero após migração."""
-    total = db.query(models.ManutencaoParcela).count()
-    orfas = (
-        db.query(models.ManutencaoParcela.id)
-        .filter(models.ManutencaoParcela.nf_id.is_(None))
-        .filter(models.ManutencaoParcela.deletado_em.is_(None))
-        .all()
-    )
-    return {"orfas": [o[0] for o in orfas], "total": total}

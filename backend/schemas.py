@@ -509,7 +509,7 @@ class ReembolsoResponse(BaseModel):
     id:                  int
     tipo:                Optional[str]   = None
     id_empresa:          Optional[int]   = None
-    empresa_emissora:    Optional[str]   = None   # sigla: TKJ / LANDKRAFT / FINITA
+    empresa_emissora:    Optional[str]   = None   # empresa sigla (lookup via /api/companies)
     id_contrato:         Optional[int]   = None
     id_cliente:          Optional[int]   = None
     id_veiculo:          Optional[int]   = None

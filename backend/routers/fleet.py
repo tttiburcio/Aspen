@@ -19,6 +19,12 @@ def listar_frota_db(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/api/db/frota/all", response_model=list[schemas.FrotaResponse])
+def listar_frota_all(db: Session = Depends(get_db)):
+    """All vehicles without status/contract filters — for CRUD modal selectors."""
+    return db.query(models.Frota).order_by(models.Frota.placa).all()
+
+
 @router.get("/api/db/pneu-specs/{placa}")
 def get_pneu_specs(placa: str, db: Session = Depends(get_db)):
     """Retorna specs de pneu para uma placa: por posição (para auto-fill) e

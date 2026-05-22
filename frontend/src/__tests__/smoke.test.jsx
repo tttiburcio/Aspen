@@ -17,12 +17,18 @@ vi.mock('../utils/api', () => ({
   getVehicles:            vi.fn().mockResolvedValue({ vehicles: [] }),
   getRegions:             vi.fn().mockResolvedValue({ regions: [] }),
   runSync:                vi.fn().mockResolvedValue({ ok: true }),
+  getCompanies:           vi.fn().mockResolvedValue([]),
   dbListOs:               vi.fn().mockResolvedValue([]),
   dbListManutencoes:      vi.fn().mockResolvedValue([]),
   dbListFrota:            vi.fn().mockResolvedValue([]),
+  dbListFrotaAll:         vi.fn().mockResolvedValue([]),
   dbListParcelas:         vi.fn().mockResolvedValue([]),
   getMaintenanceAnalysis: vi.fn().mockResolvedValue({}),
   getImplementoAnalysis:  vi.fn().mockResolvedValue({}),
+  getEnums:               vi.fn().mockResolvedValue({
+    coberturas_seguro: [], status_apolice: [], orgaos_emissores: [],
+    tipos_multa: [], status_multa: [], status_contrato: [],
+  }),
 }))
 
 // Mock do tracker (serviço externo opcional)

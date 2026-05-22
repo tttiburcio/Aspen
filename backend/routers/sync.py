@@ -31,10 +31,3 @@ def run_sync():
         raise HTTPException(500, str(e))
     finally:
         _sync_lock.release()
-
-
-@router.post("/api/db/enrich-km")
-def trigger_enrich_km():
-    """Dispara em background o preenchimento de KM nulo via MAPWS."""
-    threading.Thread(target=_enrich_km_from_mapws, daemon=True).start()
-    return {"status": "iniciado"}

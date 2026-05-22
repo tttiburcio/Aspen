@@ -24,6 +24,7 @@ Thumbs.db
 
 # ─── ASPEN: Dados reais (nunca versionar) ───────────────────
 *.xlsx
+*.db
 *.db-shm
 *.db-wal
 
