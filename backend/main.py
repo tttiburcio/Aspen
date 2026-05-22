@@ -25,6 +25,11 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title=APP_TITLE, version=APP_VERSION, lifespan=lifespan)
 
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "Aspen API is running"}
+
 # Middleware de Segurança (Security Headers)
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
