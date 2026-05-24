@@ -638,6 +638,114 @@ def seed_ordens_servico(db, empresas, veiculos):
     print(f"  OK {os_criadas} ordens de serviço finalizadas (2022–2026)")
 
 
+def seed_revisoes(db, empresas, veiculos):
+    """Gera OS de Revisão Preventiva para todos os veículos (1-3 por veículo).
+
+    O OsItem.sistema = 'Revisão' + tipo_manutencao = 'Preventiva' faz com que
+    compute._reclassify() marque evento='Revisão', visível no modal de veículo.
+    """
+    SERVICOS_REVISAO = [
+        "Troca de óleo e filtros",
+        "Revisão geral dos 30.000 km",
+        "Revisão preventiva semestral",
+        "Troca de óleo, filtros e correia dentada",
+        "Revisão dos 60.000 km",
+        "Manutenção preventiva programada",
+    ]
+
+    os_counters: dict[int, int] = {}
+    revisoes_criadas = 0
+
+    for v in veiculos:
+        empresa = next((e for e in empresas if e.id == v.id_empresa), empresas[0])
+        n = random.randint(1, 3)
+
+        # Distribuir datas de revisão no histórico, mais recente primeiro
+        datas = sorted(
+            [rand_date(ago(1460 - i * 250), ago(max(15, i * 250 - 120))) for i in range(n)],
+            reverse=True,
+        )
+
+        km_base = random.randint(50_000, 150_000)
+        for i, data_rev in enumerate(datas):
+            km = km_base + i * random.randint(25_000, 45_000)
+            prox_km = km + 30_000
+            total_os = Decimal(str(round(random.uniform(800, 3_500), 2)))
+            servico   = random.choice(SERVICOS_REVISAO)
+            fornecedor = random.choice(FORNECEDORES_OS)
+
+            ano_os = data_rev.year
+            os_counters[ano_os] = os_counters.get(ano_os, 0) + 1
+            numero_os = f"REV-{ano_os}-{os_counters[ano_os]:04d}"
+
+            os_obj = models.OrdemServico(
+                numero_os       = numero_os,
+                status_os       = "finalizada",
+                id_veiculo      = v.id,
+                placa           = v.placa,
+                modelo          = v.modelo,
+                id_empresa      = empresa.id,
+                fornecedor      = fornecedor,
+                tipo_manutencao = "Preventiva",   # obrigatório para ser Revisão
+                categoria       = "Serviço",
+                total_os        = total_os,
+                km              = km,
+                prox_km         = prox_km,
+                data_entrada    = data_rev - timedelta(days=1),
+                data_execucao   = data_rev,
+            )
+            db.add(os_obj)
+            db.flush()
+
+            item = models.OsItem(
+                os_id     = os_obj.id,
+                categoria = "Serviço",
+                sistema   = "Revisão",   # chave: detectado por compute._reclassify()
+                servico   = servico,
+                qtd_itens = 1,
+            )
+            db.add(item)
+            db.flush()
+
+            nf = models.NotaFiscal(
+                os_id          = os_obj.id,
+                numero_nf      = f"NF-REV-{random.randint(1000, 9999)}",
+                tipo_nf        = "Servico",
+                id_empresa     = empresa.id,
+                fornecedor     = fornecedor,
+                valor_total_nf = total_os,
+                data_emissao   = data_rev,
+            )
+            db.add(nf)
+            db.flush()
+
+            db.add(models.NfItem(
+                nf_id            = nf.id,
+                os_item_id       = item.id,
+                quantidade       = Decimal("1"),
+                valor_unitario   = total_os,
+                valor_total_item = total_os,
+            ))
+
+            db.add(models.ManutencaoParcela(
+                nf_id            = nf.id,
+                nota             = nf.numero_nf,
+                fornecedor       = fornecedor,
+                valor_item_total = total_os,
+                data_vencimento  = data_rev + timedelta(days=30),
+                parcela_atual    = 1,
+                parcela_total    = 1,
+                valor_parcela    = total_os,
+                forma_pgto       = "PIX",
+                status_pagamento = "Pago",
+            ))
+
+            revisoes_criadas += 1
+
+    db.flush()
+    print(f"  OK {revisoes_criadas} OS de revisão preventiva")
+
+
 def seed_reembolsos(db, empresas, veiculos, contratos):
     """Gera reembolsos distribuídos em 2022–2026 (~60 registros).
 
@@ -704,6 +812,7 @@ def run(reset: bool = False):
         seed_rastreamento(db, empresas, veiculos)
         seed_debitos_e_multas(db, empresas, veiculos)
         seed_ordens_servico(db, empresas, veiculos)
+        seed_revisoes(db, empresas, veiculos)
         seed_reembolsos(db, empresas, veiculos, contratos)
         db.commit()
         print("\n[OK] Seed concluido! Rode: uvicorn main:app --reload --port 8000")

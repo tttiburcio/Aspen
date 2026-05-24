@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
-import { X, Loader2, Wrench, Plus, Trash2 } from 'lucide-react'
+import { X, Loader2, Wrench, Plus, Trash2, RefreshCw } from 'lucide-react'
 import { dbListFrotaAll, dbAbrirOs, dbAtualizarOs, dbPneuSpecs } from '../../utils/api'
 
 const TIPOS       = ['Preventiva', 'Corretiva']
@@ -10,7 +10,10 @@ const STATUS_OPTS = [
   { value: 'em_andamento',    label: 'Em andamento'    },
   { value: 'aguardando_peca', label: 'Aguardando peça' },
 ]
+
+// "Revisão" aparece destacado como primeiro item e aciona o modo Revisão Preventiva
 const SISTEMAS = [
+  'Revisão',  // ← modo especial: força Preventiva + exibe campos prox_km / prox_data
   'Motor', 'Freio', 'Suspensão', 'Elétrico', 'Câmbio', 'Diferencial',
   'Direção', 'Implemento', 'Guincho', 'Pneu', 'Hidráulico', 'Arrefecimento', 'Outro',
 ]
@@ -53,6 +56,8 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
     indisponivel:    os?.indisponivel    ?? true,
     data_entrada:    os?.data_entrada    ?? new Date().toISOString().slice(0, 10),
     km:              os?.km              ?? '',
+    prox_km:         os?.prox_km         ?? '',
+    prox_data:       os?.prox_data       ?? '',
     status_os:       os?.status_os       ?? 'em_andamento',
     observacoes:     os?.observacoes     ?? '',
   }))
@@ -100,9 +105,26 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
     setForm(f => ({ ...f, placa, id_veiculo: v?.id ?? '', modelo: v?.modelo ?? f.modelo }))
   }
 
+  // Detecta se algum item do tipo Revisão está presente → força Preventiva
+  const isRevisaoOs = useMemo(
+    () => itens.some(it => it.sistema?.toLowerCase() === 'revisão'),
+    [itens],
+  )
+
+  // Quando isRevisaoOs muda, sincroniza tipo_manutencao
+  useEffect(() => {
+    if (isRevisaoOs) setF('tipo_manutencao', 'Preventiva')
+  }, [isRevisaoOs])  // eslint-disable-line react-hooks/exhaustive-deps
+
   const setItem = (i, k, v) => setItens(its => its.map((it, idx) => {
     if (idx !== i) return it
     const upd = { ...it, [k]: v }
+
+    // Revisão → força Serviço, sugere serviço padrão
+    if (k === 'sistema' && v?.toLowerCase() === 'revisão') {
+      upd.categoria = 'Serviço'
+      if (!upd.servico) upd.servico = 'Revisão preventiva'
+    }
 
     if (k === 'sistema' && v?.toLowerCase() === 'pneu') {
       upd.categoria   = 'Compra'
@@ -166,7 +188,9 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
       const payload = {
         ...form,
         id_veiculo: parseInt(form.id_veiculo),
-        km: form.km ? parseFloat(form.km) : null,
+        km:       form.km       ? parseFloat(form.km)       : null,
+        prox_km:  form.prox_km  ? parseFloat(form.prox_km)  : null,
+        prox_data: form.prox_data || null,
         itens: itensValidos.map(it => ({
           id:            it.id            || null,
           categoria:     it.categoria     || null,
@@ -245,12 +269,32 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
             </div>
           </div>
 
+          {/* Banner: Revisão Preventiva detectada */}
+          {isRevisaoOs && (
+            <div className="flex items-center gap-3 bg-emerald-950/50 border border-emerald-600/30 rounded-xl px-4 py-3">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 shrink-0">
+                <RefreshCw className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-emerald-500 text-xs font-bold uppercase tracking-wider">Revisão Preventiva detectada</p>
+                <p className="text-g-500 text-[11px] mt-0.5">
+                  Tipo de manutenção forçado para <strong className="text-emerald-600">Preventiva</strong>.
+                  Preencha o KM atual e o próximo KM para registro da revisão.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Tipo + KM + Status + Responsável */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
               <label className={L}>Tipo de Manutenção</label>
-              <select value={form.tipo_manutencao}
-                onChange={e => setF('tipo_manutencao', e.target.value)} className={F}>
+              <select
+                value={form.tipo_manutencao}
+                onChange={e => !isRevisaoOs && setF('tipo_manutencao', e.target.value)}
+                className={`${F} ${isRevisaoOs ? 'opacity-60 cursor-default' : ''}`}
+                disabled={isRevisaoOs}
+              >
                 {TIPOS.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
@@ -273,6 +317,31 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
                 placeholder="Nome…" className={F} />
             </div>
           </div>
+
+          {/* Próxima revisão — exibido apenas quando há item Revisão */}
+          {isRevisaoOs && (
+            <div className="grid grid-cols-2 gap-3 bg-g-900/50 border border-g-800 rounded-xl px-4 py-3">
+              <div>
+                <label className={`${L} text-emerald-700`}>Próxima Revisão — KM</label>
+                <input
+                  type="number"
+                  value={form.prox_km}
+                  onChange={e => setF('prox_km', e.target.value)}
+                  placeholder="Ex: 155000"
+                  className={F}
+                />
+              </div>
+              <div>
+                <label className={`${L} text-emerald-700`}>Próxima Revisão — Data</label>
+                <input
+                  type="date"
+                  value={form.prox_data}
+                  onChange={e => setF('prox_data', e.target.value)}
+                  className={F}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Indisponível */}
           <label className="flex items-center gap-2 cursor-pointer">
@@ -321,10 +390,15 @@ export default function AbrirOsModal({ onClose, onSaved, os = null }) {
                       {/* Sistema */}
                       <div style={{ width: 130 }} className="shrink-0">
                         <label className={L}>Sistema</label>
-                        <select value={it.sistema}
-                          onChange={e => setItem(i, 'sistema', e.target.value)} className={FI}>
+                        <select
+                          value={it.sistema}
+                          onChange={e => setItem(i, 'sistema', e.target.value)}
+                          className={`${FI} ${it.sistema?.toLowerCase() === 'revisão' ? 'border-emerald-500/50 text-emerald-500' : ''}`}
+                        >
                           <option value="">Selecione…</option>
-                          {SISTEMAS.map(s => <option key={s}>{s}</option>)}
+                          <option value="Revisão">⟳ Revisão</option>
+                          <option disabled>──────────</option>
+                          {SISTEMAS.filter(s => s !== 'Revisão').map(s => <option key={s}>{s}</option>)}
                         </select>
                       </div>
 

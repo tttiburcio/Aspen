@@ -421,12 +421,60 @@ def criar_debito(payload: DebitoCreate, db: Session = Depends(get_db)):
     return _enrich_debito(row, fm, em, {})
 
 
+def _check_anos_anteriores_pendentes(db: Session, id_veiculo: int, exercicio: int, campo: str) -> list[int]:
+    """Retorna lista de exercícios anteriores com o campo ainda não pago para este veículo.
+
+    campo: 'licenciamento' | 'ipva'
+    Regra: não é possível pagar o débito do ano N enquanto existir débito do mesmo
+    tipo em aberto em qualquer ano anterior ao N para o mesmo veículo.
+    """
+    status_col = f"status_{campo}"
+    rows = db.execute(
+        text(f"""
+            SELECT exercicio FROM debitos_documentais
+            WHERE id_veiculo = :vid
+              AND exercicio  < :ano
+              AND {status_col} != 'Pago'
+            ORDER BY exercicio
+        """),
+        {"vid": id_veiculo, "ano": exercicio},
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
 @router.patch("/api/db/debitos/{debito_id}")
 def patch_debito(debito_id: int, payload: DebitoUpdate, db: Session = Depends(get_db)):
     row = db.get(models.DebitoDocumental, debito_id)
     if not row:
         raise HTTPException(404, "Registro não encontrado")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    # ── Regra de sequência: não pagar ano N com anos anteriores em aberto ────────
+    if updates.get("status_licenciamento") == "Pago":
+        pendentes = _check_anos_anteriores_pendentes(db, row.id_veiculo, row.exercicio, "licenciamento")
+        if pendentes:
+            anos_str = ", ".join(str(a) for a in pendentes)
+            raise HTTPException(
+                422,
+                f"Não é possível pagar o licenciamento de {row.exercicio} enquanto "
+                f"o licenciamento de {anos_str} estiver em aberto. "
+                f"Regularize os anos anteriores primeiro."
+            )
+
+    if updates.get("status_ipva") == "Pago":
+        pendentes = _check_anos_anteriores_pendentes(db, row.id_veiculo, row.exercicio, "ipva")
+        if pendentes:
+            anos_str = ", ".join(str(a) for a in pendentes)
+            raise HTTPException(
+                422,
+                f"Não é possível pagar o IPVA de {row.exercicio} enquanto "
+                f"o IPVA de {anos_str} estiver em aberto. "
+                f"Regularize os anos anteriores primeiro."
+            )
+    # ─────────────────────────────────────────────────────────────────────────────
+
+    for field, value in updates.items():
         setattr(row, field, value)
     db.commit(); db.refresh(row)
     fm, em = _bulk_maps(db, [row.id_veiculo], [row.id_empresa] if row.id_empresa else [])

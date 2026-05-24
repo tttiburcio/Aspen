@@ -259,12 +259,173 @@ def _get_vehicle_body(placa: str, year: int, empresa: str = None):
                 "evento":    ev if (ev is not None and pd.notna(ev)) else None,
             })
 
+    maintenance_sorted = sorted(maintenance, key=lambda x: x["data"], reverse=True)
+    # Última revisão: campo derivado para destaque no modal
+    ultima_revisao = next((m for m in maintenance_sorted if m.get("evento") == "Revisão"), None)
+
+    # ── Dados extras diretos do banco ─────────────────────────────────────────
+    contratos_detail  = []
+    reembolsos_detail = []
+    faturamento_detail = []
+    debitos_detail    = []
+    seguro_detail     = []
+
+    try:
+        from sqlalchemy import text as _text
+        with engine.connect() as _conn:
+            # ── Contratos do veículo ──────────────────────────────────────────
+            for r in _conn.execute(_text("""
+                SELECT c.id, c.nome_cliente, c.cidade_operacao, c.estado_operacao,
+                       c.data_inicio, c.data_fim, c.data_encerramento, c.status_contrato,
+                       c.forma_pagamento, cv.valor_mensal, c.medicoes_total
+                FROM contrato_veiculo cv
+                JOIN contratos c ON c.id = cv.contrato_id
+                WHERE cv.id_veiculo = :vid
+                ORDER BY c.data_inicio DESC
+            """), {"vid": int(id_v)}).fetchall():
+                contratos_detail.append({
+                    "id":               r[0],
+                    "cliente":          r[1] or "—",
+                    "cidade":           r[2] or "—",
+                    "estado":           r[3] or "—",
+                    "data_inicio":      str(r[4]) if r[4] else None,
+                    "data_fim":         str(r[5]) if r[5] else None,
+                    "data_encerramento": str(r[6]) if r[6] else None,
+                    "status":           r[7] or "—",
+                    "forma_pagamento":  r[8] or "—",
+                    "valor_mensal":     float(r[9]) if r[9] else 0,
+                    "medicoes_total":   r[10] or 0,
+                })
+
+            # ── Reembolsos do veículo ─────────────────────────────────────────
+            for r in _conn.execute(_text("""
+                SELECT r.id, r.recibo, r.tipo, r.emissao, r.vencimento,
+                       r.valor_reembolso, r.valor_recebido, r.status_recebimento,
+                       r.descricao, r.numero_os, e.nome
+                FROM reembolsos r
+                LEFT JOIN empresas e ON e.id = r.id_empresa
+                WHERE r.id_veiculo = :vid
+                ORDER BY r.emissao DESC
+            """), {"vid": int(id_v)}).fetchall():
+                reembolsos_detail.append({
+                    "id":            r[0],
+                    "recibo":        r[1] or "—",
+                    "tipo":          r[2] or "—",
+                    "emissao":       str(r[3]) if r[3] else None,
+                    "vencimento":    str(r[4]) if r[4] else None,
+                    "valor":         float(r[5]) if r[5] else 0,
+                    "valor_recebido": float(r[6]) if r[6] else 0,
+                    "status":        r[7] or "Pendente",
+                    "descricao":     r[8] or "",
+                    "numero_os":     r[9] or "",
+                    "empresa":       r[10] or "—",
+                })
+
+            # ── Faturamento (via contratos do veículo) ────────────────────────
+            for r in _conn.execute(_text("""
+                SELECT DISTINCT fm.id, fm.numero_fatura, fm.emissao, fm.vencimento,
+                       fm.valor_locacoes, fm.valor_recebido, fm.status_recebimento,
+                       fm.forma_pagamento, fm.aliquota_imposto, fm.valor_imposto,
+                       fm.valor_liquido, fm.status_imposto, fm.empresa, c.nome_cliente
+                FROM faturamento_mensal fm
+                JOIN contrato_veiculo cv ON cv.contrato_id = fm.id_contrato
+                JOIN contratos c ON c.id = fm.id_contrato
+                WHERE cv.id_veiculo = :vid
+                ORDER BY fm.emissao DESC
+                LIMIT 48
+            """), {"vid": int(id_v)}).fetchall():
+                faturamento_detail.append({
+                    "id":                r[0],
+                    "numero_fatura":     r[1],
+                    "emissao":           str(r[2]) if r[2] else None,
+                    "vencimento":        str(r[3]) if r[3] else None,
+                    "valor_locacoes":    float(r[4]) if r[4] else 0,
+                    "valor_recebido":    float(r[5]) if r[5] else 0,
+                    "status_recebimento": r[6] or "—",
+                    "forma_pagamento":   r[7] or "—",
+                    "aliquota_imposto":  float(r[8]) if r[8] else 0,
+                    "valor_imposto":     float(r[9]) if r[9] else 0,
+                    "valor_liquido":     float(r[10]) if r[10] else 0,
+                    "status_imposto":    r[11] or "—",
+                    "cliente":           r[12] or r[13] or "—",
+                })
+
+            # ── Débitos documentais ────────────────────────────────────────────
+            for r in _conn.execute(_text("""
+                SELECT dd.id, dd.exercicio,
+                       dd.valor_ipva, dd.vencimento_ipva, dd.status_ipva,
+                       dd.valor_ipva_pago, dd.data_pgto_ipva, dd.encargo_ipva,
+                       dd.valor_licenciamento, dd.vencimento_licenciamento, dd.status_licenciamento,
+                       dd.valor_licenciamento_pago, dd.data_pgto_licenciamento, dd.encargo_licenciamento,
+                       dd.valor_multas, dd.encargo_multas
+                FROM debitos_documentais dd
+                WHERE dd.id_veiculo = :vid
+                ORDER BY dd.exercicio DESC
+            """), {"vid": int(id_v)}).fetchall():
+                debitos_detail.append({
+                    "id":       r[0],
+                    "exercicio": r[1],
+                    "ipva": {
+                        "valor":      float(r[2]) if r[2] else 0,
+                        "vencimento": str(r[3]) if r[3] else None,
+                        "status":     r[4] or "Pendente",
+                        "valor_pago": float(r[5]) if r[5] else None,
+                        "data_pgto":  str(r[6]) if r[6] else None,
+                        "encargo":    float(r[7]) if r[7] else 0,
+                    },
+                    "licenciamento": {
+                        "valor":      float(r[8]) if r[8] else 0,
+                        "vencimento": str(r[9]) if r[9] else None,
+                        "status":     r[10] or "Pendente",
+                        "valor_pago": float(r[11]) if r[11] else None,
+                        "data_pgto":  str(r[12]) if r[12] else None,
+                        "encargo":    float(r[13]) if r[13] else 0,
+                    },
+                    "multas": {
+                        "valor":   float(r[14]) if r[14] else 0,
+                        "encargo": float(r[15]) if r[15] else 0,
+                    },
+                })
+
+            # ── Apólices de seguro do veículo ──────────────────────────────────
+            for r in _conn.execute(_text("""
+                SELECT s.id, s.numero_apolice, s.seguradora, s.modelo_cobertura,
+                       s.data_inicio, s.data_fim, s.status_apolice, s.num_parcelas,
+                       sv.valor_veiculo, sv.cobre_implemento, co.nome
+                FROM seguro_veiculo sv
+                JOIN seguro s ON s.id = sv.apolice_id
+                LEFT JOIN corretores co ON co.id = s.corretor_id
+                WHERE sv.id_veiculo = :vid
+                ORDER BY s.data_inicio DESC
+            """), {"vid": int(id_v)}).fetchall():
+                seguro_detail.append({
+                    "id":              r[0],
+                    "numero_apolice":  r[1] or "—",
+                    "seguradora":      r[2] or "—",
+                    "cobertura":       r[3] or "—",
+                    "data_inicio":     str(r[4]) if r[4] else None,
+                    "data_fim":        str(r[5]) if r[5] else None,
+                    "status":          r[6] or "—",
+                    "num_parcelas":    r[7] or 12,
+                    "premio_anual":    float(r[8]) if r[8] else 0,
+                    "cobre_implemento": bool(r[9]),
+                    "corretor":        r[10] or "—",
+                })
+    except Exception as _ex:
+        logger.warning("[get_vehicle extra] %s", _ex)
+
     return {
-        "info":        info,
-        "kpis":        kpis_v,
-        "monthly":     monthly,
-        "by_contract": by_contract,
-        "maintenance": sorted(maintenance, key=lambda x: x["data"], reverse=True),
+        "info":          info,
+        "kpis":          kpis_v,
+        "monthly":       monthly,
+        "by_contract":   by_contract,
+        "maintenance":   maintenance_sorted,
+        "ultima_revisao": ultima_revisao,
+        "contratos":     contratos_detail,
+        "reembolsos":    reembolsos_detail,
+        "faturamento":   faturamento_detail,
+        "debitos":       debitos_detail,
+        "seguro":        seguro_detail,
     }
 
 
