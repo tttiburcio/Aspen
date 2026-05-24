@@ -7,7 +7,6 @@ from services.os_helpers import (
     generate_numero_os_atomic,
     validar_consistencia_os,
 )
-from services.excel_io import _sync_os_to_excel
 import logging
 
 logger = logging.getLogger("locadora")
@@ -357,7 +356,6 @@ def finalizar_os(os_id: int, db: Session = Depends(get_db)):
 
     os.status_os = "finalizada"
     os.indisponivel = False
-    _sync_os_to_excel(os)
     db.commit()
     db.refresh(os)
     return os

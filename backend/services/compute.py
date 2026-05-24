@@ -1,19 +1,16 @@
 """
 Motor analítico do Aspen (Compute).
 
-Lê os DataFrames (via excel_io e database), aplica regras de negócio 
+Lê os DataFrames do banco SQL, aplica regras de negócio
 e gera dados de dashboard (kpis, monthly, etc).
 """
 import logging
-import os
 import pandas as pd
 import numpy as np
 import threading
 
 from sqlalchemy import text
-from config import EXCEL_PATH
 from database import engine
-from services.excel_io import load_raw
 from utils.converters import safe, _dedup_manut, _col_like
 
 logger = logging.getLogger("locadora")
@@ -36,9 +33,8 @@ def _filter_year(df: pd.DataFrame, col: str, year: int) -> pd.DataFrame:
         return df
     return df[df[col].dt.year == year].copy()
 
-def _empresa_nome(data: dict, empresa_code) -> str | None:
-    """Converte código numérico de empresa (ex: '1.0') para RazaoSocial.
-    SQL-first; fallback Excel logado."""
+def _empresa_nome(empresa_code) -> str | None:
+    """Converte código numérico de empresa (ex: '1.0') para RazaoSocial via SQL."""
     if empresa_code is None:
         return None
     try:
@@ -51,27 +47,17 @@ def _empresa_nome(data: dict, empresa_code) -> str | None:
             row = conn.execute(_text("SELECT nome FROM empresas WHERE id = :e"), {"e": eid}).fetchone()
             if row and row[0]:
                 return str(row[0])
-        logger.warning("[FC_FALLBACK] empresa_nome do Excel — codigo=%s", empresa_code)
     except Exception as _e:
-        logger.warning("[FC_FALLBACK] empresa_nome SQL erro=%s", _e)
-    df = data.get("empresas", pd.DataFrame())
-    if df.empty or "IDEmpresa" not in df.columns:
-        return str(empresa_code)
-    row_xl = df[df["IDEmpresa"] == eid]
-    if row_xl.empty:
-        return str(empresa_code)
-    nome = row_xl.iloc[0].get("RazaoSocial")
-    return str(nome) if pd.notna(nome) else str(empresa_code)
+        logger.warning("empresa_nome SQL erro=%s", _e)
+    return str(empresa_code)
 
-def _contrato_ativo(data: dict, id_veiculo, data_exec) -> dict | None:
-    """Retorna o contrato ativo para um veículo em uma data de execução.
-    SQL-first; fallback Excel logado."""
+def _contrato_ativo(id_veiculo, data_exec) -> dict | None:
+    """Retorna o contrato ativo para um veículo em uma data de execução via SQL."""
     if not id_veiculo or not data_exec:
         return None
     try:
         id_veiculo = int(id_veiculo)
-        dc = pd.Timestamp(data_exec)
-        dc_str = str(dc)[:10]
+        dc_str = str(pd.Timestamp(data_exec))[:10]
     except Exception:
         return None
     try:
@@ -96,35 +82,9 @@ def _contrato_ativo(data: dict, id_veiculo, data_exec) -> dict | None:
                     "contrato_fim":    str(row[3])[:10] if row[3] else None,
                     "contrato_status": str(row[5] or ""),
                 }
-        logger.warning("[FC_FALLBACK] contrato_ativo do Excel — id_veiculo=%s", id_veiculo)
     except Exception as _e:
-        logger.warning("[FC_FALLBACK] contrato_ativo SQL erro=%s", _e)
-    cv  = data.get("contrato_veiculo", pd.DataFrame())
-    con = data.get("contratos",        pd.DataFrame())
-    if cv.empty or con.empty:
-        return None
-    ids_contrato = cv[cv["IDVeiculo"] == id_veiculo]["IDContrato"].tolist()
-    if not ids_contrato:
-        return None
-    mask = (
-        con["IDContrato"].isin(ids_contrato) &
-        (pd.to_datetime(con["DataInicio"], errors="coerce") <= dc) &
-        (
-            con["DataEncerramento"].isna() |
-            (pd.to_datetime(con["DataEncerramento"], errors="coerce") >= dc)
-        )
-    )
-    ativos = con[mask]
-    if ativos.empty:
-        return None
-    row = ativos.iloc[-1]
-    return {
-        "contrato_nome":   str(row.get("NomeCliente",      "")),
-        "contrato_cidade": str(row.get("CidadeOperacao",   "")),
-        "contrato_inicio": str(row.get("DataInicio",       ""))[:10] if pd.notna(row.get("DataInicio")) else None,
-        "contrato_fim":    str(row.get("DataFimPrevista",  ""))[:10] if pd.notna(row.get("DataFimPrevista")) else None,
-        "contrato_status": str(row.get("StatusContrato",   "")),
-    }
+        logger.warning("contrato_ativo SQL erro=%s", _e)
+    return None
 
 def _load_db_financials(year: int) -> dict:
     """Lê fat_unitario, seguro_mensal, impostos e rastreamento direto do banco.
@@ -238,66 +198,30 @@ def compute(year: int, empresa: str = None):
     return _compute_cached(year, empresa)
 
 def _compute_core(year: int, empresa: str = None):
-    data = load_raw()
+    # Todos os dados vêm do banco SQL
+    frota = pd.DataFrame()
 
-    frota  = data["frota"].copy()
-
-    # Financeiros lidos do banco (autoritativo) em vez do Excel
-    _db = _load_db_financials(year)
-    fat    = _db.get("fat",  pd.DataFrame())
-    seg    = _db.get("seg",  pd.DataFrame())
-    imp    = _db.get("imp",  pd.DataFrame())
-    rast   = _db.get("rast", pd.DataFrame())
-
-    # Fallback para Excel se banco vazio (compatibilidade)
-    if fat.empty:
-        fat  = _filter_year(_parse(data["fat_unitario"].copy(),  "Mes"),         "Mes",       year)
-    if seg.empty:
-        seg  = _filter_year(_parse(data["seguro_mensal"].copy(), "Vencimento"),  "Vencimento", year)
-    if imp.empty:
-        imp  = data["impostos"].copy()
-        if not imp.empty and "AnoImposto" in imp.columns:
-            imp = imp[imp["AnoImposto"] == year].copy()
-    if rast.empty:
-        rast = _filter_year(_parse(data["rastreamento"].copy(),  "Vencimento"),  "Vencimento", year)
-
-    reimb  = _db.get("reimb",  pd.DataFrame())
+    _db   = _load_db_financials(year)
+    fat   = _db.get("fat",   pd.DataFrame())
+    seg   = _db.get("seg",   pd.DataFrame())
+    imp   = _db.get("imp",   pd.DataFrame())
+    rast  = _db.get("rast",  pd.DataFrame())
+    reimb = _db.get("reimb", pd.DataFrame())
     fat_sh = _db.get("fat_sh", pd.DataFrame())
-    if reimb.empty:
-        logger.warning("[FC_FALLBACK] reembolsos do Excel — year=%s", year)
-        reimb = _filter_year(_parse(data["reembolsos"].copy(), "Emissão"), "Emissão", year)
-    if fat_sh.empty:
-        logger.warning("[FC_FALLBACK] faturamento_mensal Excel — year=%s", year)
-        fat_sh = _filter_year(_parse(data.get("faturamento_mensal", pd.DataFrame()).copy(), "Emissão"), "Emissão", year)
 
-    logger.info(
-        "[FC_FALLBACK] manut_raw lido do Excel em compute() year=%s — "
-        "ordens_servico SQL é sobreposto em seguida; Excel serve como base histórica.", year,
-    )
-    manut_raw = _filter_year(_parse(data["manutencoes"].copy(), "DataExecução"), "DataExecução", year)
-
-    # ── Excel Notas Count ──────────────────────────────────
-    if not manut_raw.empty and "IDOrdServ" in manut_raw.columns and "Nota" in manut_raw.columns:
-        # Contagem de notas únicas por OS vindas do Excel
-        excel_counts = manut_raw.dropna(subset=["IDOrdServ"]).groupby("IDOrdServ")["Nota"].nunique().rename("qtd_notas_excel")
-        manut_raw = manut_raw.merge(excel_counts, on="IDOrdServ", how="left")
+    # manut_raw começa vazio; OS do banco são carregadas abaixo
+    manut_raw = pd.DataFrame()
     
-    # ── Integrar Dados do Banco SQL (Ordens de Serviço e Frota) ──────
+    # ── Carregar todos os dados do banco SQL ──────────────────────────
     try:
         with engine.connect() as conn:
-            # 1. Carregar Veículos da SQL para garantir que placas novas apareçam
-            sql_frota = pd.read_sql(
+            # 1. Frota completa do banco
+            frota = pd.read_sql(
                 "SELECT id AS IDVeiculo, placa AS Placa, id_empresa AS IDEmpresa, "
                 "marca AS Marca, modelo AS Modelo, status AS Status, "
                 "tipagem AS Tipagem, implemento AS Implemento, "
                 "ano_modelo AS AnoModelo, tabela_fipe AS TabelaFipe, "
                 "valor_implemento AS ValorImplemento, valor_total AS ValorTotal FROM frota", conn)
-            if not sql_frota.empty:
-                cols_to_merge = [c for c in ["AnoModelo", "TabelaFipe", "ValorImplemento", "ValorTotal"] if c in frota.columns]
-                if "Placa" in frota.columns and cols_to_merge:
-                    excel_data = frota[["Placa"] + cols_to_merge].dropna(subset=["Placa"]).drop_duplicates(subset=["Placa"])
-                    sql_frota = sql_frota.merge(excel_data, on="Placa", how="left")
-                frota = pd.concat([frota, sql_frota], ignore_index=True).drop_duplicates(subset=["Placa"], keep="last")
 
             # ── Resolver ID da empresa filtrada ────────────────────────────────
             # Converte sigla (parâmetro externo) para ID inteiro (padrão interno do banco)
@@ -468,62 +392,35 @@ def _compute_core(year: int, empresa: str = None):
                 sql_os["DataExecução"] = pd.to_datetime(sql_os["DataExecução"])
 
                 # SQL prevalece sobre Excel: remove TODAS as OS que existem no banco,
-                # independente de empresa — evita que OS com NFs de outra empresa
-                # vaze pelo caminho do Excel (que não tem filtro NF-level).
-                if not manut_raw.empty and "IDOrdServ" in manut_raw.columns:
-                    all_db_os_ids = {
-                        r[0] for r in conn.execute(
-                            text("SELECT numero_os FROM ordens_servico WHERE numero_os IS NOT NULL AND deletado_em IS NULL")
-                        ).fetchall()
-                    }
-                    manut_raw = manut_raw[~manut_raw["IDOrdServ"].isin(all_db_os_ids)]
-
-                # Dedup Excel antes de concat: Excel repete TotalOS por parcela/categoria
-                # sql_os já foi explodido por sistema (múltiplas linhas com TotalOS fracionado)
-                # e NÃO deve ser deduplicado — cada linha é uma fração distinta
-                manut_raw = _dedup_manut(manut_raw)
-                sql_os["_from_sql"] = True
-                manut_raw = pd.concat([manut_raw, sql_os], ignore_index=True)
+                # SQL é a única fonte — sql_os vai direto para manut_raw
+                manut_raw = sql_os
     except Exception as e:
-        logger.error("Erro ao integrar SQL no Dashboard: %s", e)
+        logger.error("Erro ao carregar dados do banco no Dashboard: %s", e)
 
-    # ── Lógica de Reclassificação e Notas ─────────────────
+    # ── Reclassificação de sistemas ────────────────────────
     if not manut_raw.empty:
-        # Unifica qtd_notas (SQL vs Excel)
-        if "qtd_notas_excel" in manut_raw.columns:
-            if "qtd_notas" not in manut_raw.columns:
-                manut_raw["qtd_notas"] = manut_raw["qtd_notas_excel"]
-            else:
-                manut_raw["qtd_notas"] = manut_raw["qtd_notas"].fillna(manut_raw["qtd_notas_excel"])
-
         def _reclassify(row):
             sistema = str(row.get("Sistema", "")).strip().lower()
-            tipo = str(row.get("TipoManutencao", "")).strip().lower()
+            tipo    = str(row.get("TipoManutencao", "")).strip().lower()
             servico = str(row.get("Serviço", "")).strip().lower()
-            os_id = str(row.get("IDOrdServ", ""))
+            os_id   = str(row.get("IDOrdServ", ""))
 
             is_revisao = False
             if sistema == 'revisão':
                 row["Sistema"] = "Motor"
                 if tipo == 'preventiva':
                     is_revisao = True
-            
+
             if os_id == 'OS-2026-0205' or ('óleo' in servico):
                 if tipo == 'preventiva' and str(row.get("Sistema", "")).lower() == 'motor':
                     is_revisao = True
-            
+
             row["evento"] = "Revisão" if is_revisao else None
             return row
 
         manut_raw = manut_raw.apply(_reclassify, axis=1)
 
-    # Dedup apenas linhas do Excel (sql já foi deduplicado antes do concat)
-    if not manut_raw.empty and "_from_sql" in manut_raw.columns:
-        sql_part   = manut_raw[manut_raw["_from_sql"] == True].copy()
-        excel_part = manut_raw[manut_raw["_from_sql"] != True].copy()
-        manut = pd.concat([_dedup_manut(excel_part), sql_part], ignore_index=True)
-    else:
-        manut = _dedup_manut(manut_raw)
+    manut = manut_raw
 
     # ── Receitas por veículo ─────────────────────────────────
     rev_loc  = fat.groupby("IDVeiculo")["Medicao"].sum().rename("ReceitaLocacao") if not fat.empty else pd.Series(dtype=float, name="ReceitaLocacao")
@@ -686,24 +583,16 @@ def _compute_core(year: int, empresa: str = None):
 
 
 def _compute_cached(year: int, empresa: str = None):
-    """Wrapper thread-safe com invalidação por mtime para o núcleo analítico."""
+    """Wrapper thread-safe com cache por (year, empresa). Cache é invalidado na inicialização do processo."""
+    key = (year, empresa)
     with _compute_lock:
-        try:
-            mtime = os.path.getmtime(EXCEL_PATH)
-        except OSError:
-            mtime = 0.0
-
-        key = (year, empresa, mtime)
         if key in _compute_cache:
             return _compute_cache[key]
-            
-        _compute_cache.clear()
-        
+
     # Processa fora do lock para não bloquear a API
     result = _compute_core(year, empresa)
-    
+
     with _compute_lock:
-        # Se outra thread atualizou enquanto processávamos, mantemos o mais novo (não faremos overwrite forçado)
         if key not in _compute_cache:
             _compute_cache[key] = result
         return _compute_cache[key]

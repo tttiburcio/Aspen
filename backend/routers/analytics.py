@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from database import engine, get_db
 from config import MAPWS_BASE
-from services.excel_io import load_raw
 from services.compute import compute, _linear_projection, MESES_PT
 from utils.converters import safe, _clean_year, _clean_implemento, _dedup_manut, _col_like
 
@@ -31,31 +30,26 @@ def _filter_year(df: pd.DataFrame, col: str, year: int) -> pd.DataFrame:
 
 @router.get("/api/years")
 def get_years():
-    data = load_raw()
     years: set = set()
-    fat = _parse(data["fat_unitario"], "Mes")
-    if "Mes" in fat.columns:
-        years.update(fat["Mes"].dropna().dt.year.astype(int).tolist())
-    fsh = _parse(data.get("faturamento_mensal", pd.DataFrame()), "Emissão")
-    if "Emissão" in fsh.columns:
-        years.update(fsh["Emissão"].dropna().dt.year.astype(int).tolist())
-    # Also include years from OS records and faturamento_mensal in the DB
     try:
         from sqlalchemy import text as _text
         with engine.connect() as conn:
             rows = conn.execute(_text("""
-                SELECT DISTINCT CAST(strftime('%Y', data_entrada) AS INTEGER) as yr
+                SELECT DISTINCT CAST(strftime('%Y', mes) AS INTEGER)
+                FROM fat_unitario WHERE mes IS NOT NULL
+                UNION
+                SELECT DISTINCT CAST(strftime('%Y', data_entrada) AS INTEGER)
                 FROM ordens_servico WHERE data_entrada IS NOT NULL
                 UNION
-                SELECT DISTINCT CAST(strftime('%Y', data_execucao) AS INTEGER) as yr
+                SELECT DISTINCT CAST(strftime('%Y', data_execucao) AS INTEGER)
                 FROM ordens_servico WHERE data_execucao IS NOT NULL
                 UNION
-                SELECT DISTINCT CAST(strftime('%Y', emissao) AS INTEGER) as yr
+                SELECT DISTINCT CAST(strftime('%Y', emissao) AS INTEGER)
                 FROM faturamento_mensal WHERE emissao IS NOT NULL
             """)).fetchall()
             years.update(r[0] for r in rows if r[0])
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("get_years DB error: %s", e)
     return {"years": sorted(years, reverse=True)}
 
 
@@ -126,17 +120,10 @@ def get_regions(year: int = Query(..., ge=2000, le=2100)):
                 "SELECT DISTINCT contrato FROM fat_unitario "
                 "WHERE contrato IS NOT NULL AND strftime('%Y', mes) = :y"
             ), {"y": str(year)}).fetchall()
-            if rows:
-                return {"regions": sorted(r[0] for r in rows if r[0])}
-        logger.warning("[FC_FALLBACK] regions do Excel — year=%s", year)
+            return {"regions": sorted(r[0] for r in rows if r[0])}
     except Exception as _e:
-        logger.warning("[FC_FALLBACK] regions SQL erro=%s", _e)
-    data  = load_raw()
-    fat   = _filter_year(_parse(data["fat_unitario"].copy(), "Mes"), "Mes", year)
-    if fat.empty or "Contrato" not in fat.columns:
-        return {"regions": []}
-    regions = sorted(fat["Contrato"].dropna().unique().tolist())
-    return {"regions": regions}
+        logger.warning("get_regions DB error: %s", _e)
+    return {"regions": []}
 
 
 @router.get("/api/vehicle/{placa}")
@@ -506,96 +493,7 @@ def get_intervalos_analysis(sistema: str = Query(...)):
     sis_lower  = sistema.strip().lower()
     is_pneu    = sis_lower == "pneu"
 
-    # ── 1. Dados do Excel (histórico legado, todos os anos) ──────────
-    rows_excel = pd.DataFrame()
-    try:
-        raw      = load_raw()
-        frota_df = raw["frota"].copy()
-        # Para pneu: NÃO usar _dedup_manut — precisamos de TODAS as linhas por OS
-        # (cada linha = um item distinto, ex: DIANTEIRO e TRASEIRO separados)
-        if is_pneu:
-            manut_raw = _parse(raw["manutencoes"].copy(), "DataExecução")
-        else:
-            manut_raw = _dedup_manut(_parse(raw["manutencoes"].copy(), "DataExecução"))
-
-        if not manut_raw.empty and "Sistema" in manut_raw.columns:
-            col_serv  = _col_like(manut_raw, "servi") or "Serviço"
-            col_data  = _col_like(manut_raw, "data", "exec") or "DataExecução"
-            col_pos   = _col_like(manut_raw, "posi", "pneu")
-            col_espec = _col_like(manut_raw, "especif", "pneu")
-
-            if is_revisao:
-                sc = manut_raw.get(col_serv, pd.Series("", index=manut_raw.index)).fillna("").str.lower()
-                mask = (manut_raw["Sistema"].fillna("").str.lower().isin(["revisão", "motor"])) & \
-                       (sc.str.contains("óleo|oleo|revis", na=False))
-            else:
-                mask = manut_raw["Sistema"].fillna("").str.lower() == sis_lower
-
-            filtered = manut_raw[mask].copy()
-
-            # Para pneu: apenas categoria Compra ou ManejoPneu = Recapadora
-            if is_pneu and not filtered.empty:
-                cat_col   = filtered.get("Categoria",  pd.Series("", index=filtered.index)).fillna("").str.lower()
-                manejo_col_name = _col_like(filtered, "manejo", "pneu")
-                manejo_col = filtered.get(manejo_col_name, pd.Series("", index=filtered.index)).fillna("").str.lower() \
-                             if manejo_col_name else pd.Series("", index=filtered.index)
-                keep = (cat_col == "compra") | (manejo_col == "recapadora")
-                filtered = filtered[keep].copy()
-                # Dedup por (IDOrdServ, posição): Excel tem 1 linha por parcela, queremos 1 por compra
-                if not filtered.empty:
-                    dedup_cols = ["IDOrdServ", col_pos] if col_pos and col_pos in filtered.columns else ["IDOrdServ"]
-                    filtered = filtered.drop_duplicates(subset=dedup_cols)
-
-            # Enriquecer com Implemento e Modelo da frota
-            if not filtered.empty and "IDVeiculo" in filtered.columns and not frota_df.empty:
-                frota_slim = frota_df[["IDVeiculo", "Placa", "Modelo", "Implemento"]].drop_duplicates("IDVeiculo") \
-                    if all(c in frota_df.columns for c in ["IDVeiculo", "Placa", "Modelo", "Implemento"]) else None
-                if frota_slim is not None:
-                    filtered = filtered.merge(frota_slim, on="IDVeiculo", how="left", suffixes=("", "_frota"))
-                    for c in ["Placa", "Modelo", "Implemento"]:
-                        fc = c + "_frota"
-                        if fc in filtered.columns:
-                            filtered[c] = filtered[c].combine_first(filtered[fc])
-                            filtered.drop(columns=[fc], inplace=True)
-
-            needed = ["Placa", "Modelo", "Implemento", col_data, "KM", "IDOrdServ", "Sistema", "Categoria"]
-            if col_serv and col_serv != "IDOrdServ" and col_serv not in needed:
-                needed.append(col_serv)
-            pneu_extra = [col_pos, "QtdPneu", col_espec, "MarcaPneu", "ModeloPneu", "CondicaoPneu", "ManejoPneu"]
-            if is_pneu:
-                needed += [c for c in pneu_extra if c and c not in needed]
-            for c in needed:
-                if c not in filtered.columns:
-                    filtered[c] = None
-
-            rename_map = {
-                col_data:    "data_exec", "KM":        "km",
-                "IDOrdServ": "numero_os", "Sistema":   "sistema_val",
-                "Placa":     "placa",     "Modelo":    "modelo",
-                "Implemento":"implemento","Categoria": "categoria",
-            }
-            if col_serv and col_serv != "IDOrdServ":
-                rename_map[col_serv] = "servico"
-
-            rows_excel = filtered[needed].rename(columns=rename_map)
-            if is_pneu:
-                rows_excel = rows_excel.rename(columns={
-                    col_pos:          "posicao_pneu",
-                    "QtdPneu":        "qtd_pneu",
-                    col_espec:        "espec_pneu",
-                    "MarcaPneu":      "marca_pneu",
-                    "ModeloPneu":     "modelo_pneu",
-                    "CondicaoPneu":   "condicao_pneu",
-                    "ManejoPneu":     "manejo_pneu",
-                })
-            rows_excel["fonte"] = "excel"
-            for col in ["servico", "categoria", "posicao_pneu", "qtd_pneu", "espec_pneu", "marca_pneu", "modelo_pneu", "condicao_pneu", "manejo_pneu", "descricao", "qtd_itens"]:
-                if col not in rows_excel.columns:
-                    rows_excel[col] = None
-    except Exception as e:
-        logger.error("Erro ao carregar Excel em /api/intervalos: %s", e)
-
-    # ── 2. Dados do SQL (todos os anos, com os_itens expandidos) ────
+    # ── Dados do SQL (todos os anos, com os_itens expandidos) ──────────
     rows_sql = pd.DataFrame()
     try:
         if is_revisao:
@@ -646,48 +544,11 @@ def get_intervalos_analysis(sistema: str = Query(...)):
     except Exception as e:
         logger.error("Erro ao carregar SQL em /api/intervalos: %s", e)
 
-    # ── 3. Combinar ──────────────────────────────────────────────────
-    if rows_sql.empty and rows_excel.empty:
+    # ── Usar dados SQL diretamente ───────────────────────────────────
+    if rows_sql.empty:
         return {"sistema": sistema, "fleet": {}, "por_placa": []}
 
-    if is_pneu:
-        # SQL autoritativo para QUALQUER row pneu — mesmo sem posicao_pneu preenchida.
-        # Excel complementa posicao_pneu ausente no SQL e cobre OS totalmente ausentes do SQL.
-        frames_pneu = []
-        sql_nos = set(rows_sql["numero_os"].dropna().unique()) if not rows_sql.empty else set()
-
-        if not rows_sql.empty:
-            rows_sql_base = rows_sql.copy()
-            # Backfill posicao_pneu de Excel para rows SQL que ainda não têm posição
-            if not rows_excel.empty:
-                pos_xl = (
-                    rows_excel[rows_excel["posicao_pneu"].notna()]
-                    [["numero_os", "posicao_pneu"]]
-                    .drop_duplicates("numero_os")
-                    .set_index("numero_os")["posicao_pneu"]
-                )
-                mask_no_pos = (
-                    rows_sql_base["posicao_pneu"].isna()
-                    | (rows_sql_base["posicao_pneu"].astype(str).str.strip() == "")
-                )
-                rows_sql_base.loc[mask_no_pos, "posicao_pneu"] = (
-                    rows_sql_base.loc[mask_no_pos, "numero_os"].map(pos_xl)
-                )
-            frames_pneu.append(rows_sql_base)
-
-        if not rows_excel.empty:
-            # Excel apenas para OS completamente ausentes do SQL
-            excel_only = rows_excel[~rows_excel["numero_os"].isin(sql_nos)].copy()
-            if not excel_only.empty:
-                frames_pneu.append(excel_only)
-
-        combined = pd.concat(frames_pneu, ignore_index=True) if frames_pneu else pd.DataFrame()
-    else:
-        frames  = [f for f in [rows_excel, rows_sql] if not f.empty]
-        combined = pd.concat(frames, ignore_index=True)
-        if "numero_os" in combined.columns:
-            sql_os = set(combined[combined["fonte"] == "sql"]["numero_os"].dropna().unique())
-            combined = combined[(combined["fonte"] == "sql") | (~combined["numero_os"].isin(sql_os))]
+    combined = rows_sql.copy()
 
     combined["km"]        = pd.to_numeric(combined["km"], errors="coerce")
     combined["data_exec"] = pd.to_datetime(combined["data_exec"], errors="coerce")

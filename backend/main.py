@@ -3,7 +3,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import CORS_ORIGINS, APP_TITLE, APP_VERSION
 from database import init_db
-from services.excel_io import _sync_manutencoes_background
 from services.os_helpers import _enrich_km_from_mapws
 from routers import analytics, maintenance, orders, invoices, fleet, sync, companies, reembolsos, contratos, faturamento, debitos, rastreamento, seguro
 import asyncio
@@ -15,12 +14,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()  # creates tables for fresh installs; run `alembic upgrade head` for schema migrations
-    task1 = asyncio.create_task(asyncio.to_thread(_sync_manutencoes_background))
-    task2 = asyncio.create_task(asyncio.to_thread(_enrich_km_from_mapws))
+    task_km = asyncio.create_task(asyncio.to_thread(_enrich_km_from_mapws))
     yield
-    task1.cancel()
-    task2.cancel()
-    await asyncio.gather(task1, task2, return_exceptions=True)
+    task_km.cancel()
+    await asyncio.gather(task_km, return_exceptions=True)
 
 
 app = FastAPI(title=APP_TITLE, version=APP_VERSION, lifespan=lifespan)

@@ -2,7 +2,6 @@ from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 import models, schemas
-from services.excel_io import load_raw
 from services.compute import _empresa_nome, _contrato_ativo
 import logging
 
@@ -139,7 +138,6 @@ def listar_parcelas(year: int = None, empresa: str = None, db: Session = Depends
 
     Prioriza caminho autoritativo parcela → nf → os; fallback para legado manutencao.
     """
-    data = load_raw()
     from sqlalchemy import extract, func as sf, or_
     from sqlalchemy.orm import joinedload
 
@@ -189,7 +187,7 @@ def listar_parcelas(year: int = None, empresa: str = None, db: Session = Depends
             d["empresa"] = emp_val
 
             
-            d["empresa_nome"]  = _empresa_nome(data, d["empresa"])
+            d["empresa_nome"]  = _empresa_nome(d["empresa"])
             d["id_contrato"]   = os_obj.id_contrato
             d["fornecedor_os"] = os_obj.fornecedor
             d["fornecedor"]    = getattr(p, "fornecedor", None) or nf.fornecedor or os_obj.fornecedor
@@ -198,7 +196,7 @@ def listar_parcelas(year: int = None, empresa: str = None, db: Session = Depends
             d["id_ord_serv"]   = os_obj.numero_os
             d["nota"]          = nf.numero_nf
             d["data_execucao"] = os_obj.data_execucao
-            contrato = _contrato_ativo(data, os_obj.id_veiculo, os_obj.data_execucao)
+            contrato = _contrato_ativo(os_obj.id_veiculo, os_obj.data_execucao)
         else:
             d["placa"]         = manut.placa
             d["modelo"]        = manut.modelo
@@ -211,7 +209,7 @@ def listar_parcelas(year: int = None, empresa: str = None, db: Session = Depends
             d["sistema"]       = manut.sistema
             d["id_ord_serv"]   = manut.id_ord_serv
             d["data_execucao"] = manut.data_execucao
-            contrato = _contrato_ativo(data, manut.id_veiculo, manut.data_execucao)
+            contrato = _contrato_ativo(manut.id_veiculo, manut.data_execucao)
 
         d["contrato_nome"]   = contrato["contrato_nome"]   if contrato else None
         d["contrato_cidade"] = contrato["contrato_cidade"] if contrato else None
