@@ -377,7 +377,7 @@ class NotaFiscalResponse(BaseModel):
 # ── OrdemServico ─────────────────────────────────────────────────────
 class OsAbrir(BaseModel):
     id_veiculo:      int
-    placa:           str
+    placa:           Optional[str]   = None   # auto-preenchido via frota se omitido
     modelo:          Optional[str]   = None
     empresa:         Optional[str]   = None
     id_contrato:     Optional[str]   = None

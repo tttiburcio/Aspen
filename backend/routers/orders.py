@@ -168,12 +168,13 @@ def abrir_os(payload: schemas.OsAbrir, db: Session = Depends(get_db)):
         raise HTTPException(404, f"Veículo {payload.id_veiculo} não encontrado")
 
     data = payload.model_dump(exclude={"itens"})
-    
+    data.pop("empresa", None)   # campo de display; o model usa id_empresa (FK)
+
     # Auto-preenchimento de dados da frota
-    if not data.get("modelo"):     data["modelo"]     = veiculo.modelo
-    if not data.get("placa"):      data["placa"]      = veiculo.placa
-    if not data.get("implemento"): data["implemento"] = veiculo.implemento
-    if not data.get("id_empresa"):  data["id_empresa"]  = veiculo.id_empresa
+    if not data.get("modelo"):    data["modelo"]    = veiculo.modelo
+    if not data.get("placa"):     data["placa"]     = veiculo.placa
+    if not data.get("implemento"):data["implemento"]= veiculo.implemento
+    if not data.get("id_empresa"):data["id_empresa"]= veiculo.id_empresa
 
     # Auto-preenchimento de categoria da OS pelo 1º item se vazio
     if not data.get("categoria") and payload.itens:
