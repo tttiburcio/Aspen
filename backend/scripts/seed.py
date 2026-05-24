@@ -9,14 +9,15 @@ Uso:
     python scripts/seed.py --reset
 
 Cria:
-    3 empresas · 40 veículos · 6 contratos · 3 apólices de seguro
-    40 registros de rastreamento · débitos documentais (IPVA + licenciamento)
-    multas de trânsito · OS finalizadas + NFs + parcelas · reembolsos
+    3 empresas · 4 corretores · 40 veículos · 5 contratos · 3 apólices de seguro
+    40 registros de rastreamento · débitos documentais (IPVA + licenciamento) 2022–2026
+    multas de trânsito · OS finalizadas (2022–2026) + NFs + parcelas · reembolsos
 """
 
 import sys
 import random
 import argparse
+import calendar
 from pathlib import Path
 from datetime import date, timedelta
 from decimal import Decimal
@@ -35,16 +36,16 @@ Faker.seed(42)
 # ─── Constantes realistas ─────────────────────────────────────────────────────
 
 MARCAS_MODELOS = [
-    ("Scania",    "R450"),
-    ("Volvo",     "FH 460"),
-    ("Mercedes",  "Actros 2546"),
-    ("MAN",       "TGX 29.440"),
-    ("Iveco",     "S-Way 480"),
-    ("Ford",      "Cargo 2429"),
-    ("Volkswagen","Constellation 25.420"),
-    ("Toyota",    "Hilux CD"),
-    ("Chevrolet", "S10 LTZ"),
-    ("Fiat",      "Toro Ranch"),
+    ("Scania",      "R450"),
+    ("Volvo",       "FH 460"),
+    ("Mercedes",    "Actros 2546"),
+    ("MAN",         "TGX 29.440"),
+    ("Iveco",       "S-Way 480"),
+    ("Ford",        "Cargo 2429"),
+    ("Volkswagen",  "Constellation 25.420"),
+    ("Toyota",      "Hilux CD"),
+    ("Chevrolet",   "S10 LTZ"),
+    ("Fiat",        "Toro Ranch"),
 ]
 
 TIPAGENS = [
@@ -116,13 +117,39 @@ def ago(days: int) -> date:
 def future(days: int) -> date:
     return today() + timedelta(days=days)
 
+def add_months(d: date, months: int) -> date:
+    """Adiciona meses a uma data, ajustando para o último dia do mês quando necessário."""
+    total = d.month - 1 + months
+    year  = d.year + total // 12
+    month = total % 12 + 1
+    day   = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
 # ─── Seeding ──────────────────────────────────────────────────────────────────
 
 def seed_empresas(db) -> list[models.Empresa]:
     empresas = [
-        models.Empresa(nome="Frota Logística S.A.",      sigla="EMPRESA_A", municipio="São Paulo",     estado="SP"),
-        models.Empresa(nome="Transporte Rápido Ltda.",    sigla="EMPRESA_B", municipio="Campinas",      estado="SP"),
-        models.Empresa(nome="Mineração Norte S.A.",       sigla="EMPRESA_C", municipio="Belo Horizonte",estado="MG"),
+        models.Empresa(
+            nome="Frota Logística S.A.",
+            sigla="EMPRESA_A",
+            cnpj_cpf="11.222.333/0001-44",
+            municipio="São Paulo",
+            estado="SP",
+        ),
+        models.Empresa(
+            nome="Transporte Rápido Ltda.",
+            sigla="EMPRESA_B",
+            cnpj_cpf="55.666.777/0001-88",
+            municipio="Campinas",
+            estado="SP",
+        ),
+        models.Empresa(
+            nome="Mineração Norte S.A.",
+            sigla="EMPRESA_C",
+            cnpj_cpf="99.000.111/0001-22",
+            municipio="Belo Horizonte",
+            estado="MG",
+        ),
     ]
     db.add_all(empresas)
     db.flush()
@@ -130,10 +157,53 @@ def seed_empresas(db) -> list[models.Empresa]:
     return empresas
 
 
+def seed_corretores(db) -> list[models.Corretor]:
+    corretores = [
+        models.Corretor(
+            nome="Corretor Nacional Seguros Ltda.",
+            cnpj="12.345.678/0001-90",
+            susep="10203040",
+            telefone="(11) 98765-4321",
+            email="contato@corretornacional.com.br",
+        ),
+        models.Corretor(
+            nome="Sul Seguros Corretora S.A.",
+            cnpj="98.765.432/0001-10",
+            susep="50607080",
+            telefone="(51) 3333-4444",
+            email="atendimento@sulseguros.com.br",
+        ),
+        models.Corretor(
+            nome="Premiere Riscos e Seguros",
+            cnpj="11.223.344/0001-55",
+            susep="90100200",
+            telefone="(21) 2222-9999",
+            email="premiere@riscos.com.br",
+        ),
+        models.Corretor(
+            nome="Agência Total Seguros",
+            cnpj="33.445.566/0001-77",
+            susep="30405060",
+            telefone="(31) 4444-5555",
+            email="total@agenciaseguros.com.br",
+        ),
+    ]
+    db.add_all(corretores)
+    db.flush()
+    print(f"  OK {len(corretores)} corretores")
+    return corretores
+
+
 def seed_clientes(db) -> list[models.Cliente]:
     clientes = []
     for nome, status in CLIENTES:
-        c = models.Cliente(nome=nome, cnpj_cpf=fake.cnpj(), municipio=fake.city(), estado=fake.estado_sigla(), status_cliente=status)
+        c = models.Cliente(
+            nome=nome,
+            cnpj_cpf=fake.cnpj(),
+            municipio=fake.city(),
+            estado=fake.estado_sigla(),
+            status_cliente=status,
+        )
         db.add(c)
         clientes.append(c)
     db.flush()
@@ -151,19 +221,29 @@ def seed_frota(db, empresas: list[models.Empresa]) -> list[models.Frota]:
                 placas_geradas.add(placa)
                 break
         marca, modelo = random.choice(MARCAS_MODELOS)
-        empresa = random.choice(empresas)
-        tipagem = random.choice(TIPAGENS)
+        empresa  = random.choice(empresas)
+        tipagem  = random.choice(TIPAGENS)
+        impl     = random.choice(IMPLEMENTOS)
+        tab_fipe = Decimal(str(round(random.uniform(180_000, 650_000), 2)))
+        # valor_implemento: entre 15% e 40% do valor do veículo quando há implemento
+        val_impl = (
+            Decimal(str(round(float(tab_fipe) * random.uniform(0.15, 0.40), 2)))
+            if impl is not None else None
+        )
         v = models.Frota(
             placa            = placa,
             id_empresa       = empresa.id,
             marca            = marca,
             modelo           = modelo,
             ano_modelo       = str(random.randint(2018, 2024)),
-            status           = random.choices(["Frota", "Frota", "Frota", "Manutenção", "Inativo"], k=1)[0],
+            status           = random.choices(
+                ["Frota", "Frota", "Frota", "Manutenção", "Inativo"], k=1
+            )[0],
             tipagem          = tipagem,
-            implemento       = random.choice(IMPLEMENTOS),
-            tabela_fipe      = Decimal(str(round(random.uniform(180_000, 650_000), 2))),
-            valor_total      = Decimal(str(round(random.uniform(200_000, 700_000), 2))),
+            implemento       = impl,
+            tabela_fipe      = tab_fipe,
+            valor_implemento = val_impl,
+            valor_total      = tab_fipe + (val_impl or Decimal("0")),
             renavam          = "".join(str(random.randint(0, 9)) for _ in range(11)),
         )
         db.add(v)
@@ -180,8 +260,9 @@ def seed_contratos(db, empresas, clientes, veiculos) -> list[models.Contrato]:
 
     for i, cliente in enumerate(clientes[:5]):
         empresa = empresas[i % len(empresas)]
-        inicio  = rand_date(ago(730), ago(30))
-        fim     = inicio + timedelta(days=random.choice([365, 548, 730]))
+        # Contratos que cobrem o histórico de 4 anos (2022–2026)
+        inicio  = rand_date(ago(1460), ago(90))
+        fim     = inicio + timedelta(days=random.choice([365, 548, 730, 912]))
         status  = "Ativo" if fim > today() else "Encerrado"
         c = models.Contrato(
             empresa_id      = empresa.id,
@@ -194,6 +275,7 @@ def seed_contratos(db, empresas, clientes, veiculos) -> list[models.Contrato]:
             status_contrato = status,
             forma_pagamento = random.choice(["PIX", "Boleto"]),
             assinado        = True,
+            medicoes_total  = (fim.year - inicio.year) * 12 + (fim.month - inicio.month),
         )
         db.add(c)
         contratos.append(c)
@@ -219,33 +301,52 @@ def seed_contratos(db, empresas, clientes, veiculos) -> list[models.Contrato]:
 
 
 def seed_faturamento(db, empresas, contratos, veiculos):
+    """Gera FatUnitario e FaturamentoMensal para cada contrato.
+
+    Popula FatUnitario.contrato com o nome do cliente/contrato para que
+    /api/regions e o filtro por contrato no dashboard funcionem corretamente.
+    Popula FaturamentoMensal.numero_fatura com numeração sequencial por empresa.
+    """
     rows = []
+    # Contador sequencial de numero_fatura por empresa (chave = empresa.id)
+    fat_seq: dict[int, int] = {}
+
     for contrato in contratos:
         empresa = next((e for e in empresas if e.id == contrato.empresa_id), empresas[0])
-        inicio = contrato.data_inicio
-        fim    = min(contrato.data_fim, today())
-        mes    = date(inicio.year, inicio.month, 1)
+        inicio  = contrato.data_inicio
+        fim     = min(contrato.data_fim, today())
+        mes     = date(inicio.year, inicio.month, 1)
+        # nome da "região/contrato" que aparece nos filtros do dashboard
+        nome_contrato = contrato.nome_cliente
+
+        # coleta ids dos veículos deste contrato
         veics_contrato = [cv.id_veiculo for cv in contrato.veiculos]
+
         while mes <= fim:
             valor = Decimal(str(round(random.uniform(25_000, 120_000), 2)))
             aliq  = Decimal("11.33")
-            imposto = (valor * aliq / 100).quantize(Decimal("0.01"))
+            imposto  = (valor * aliq / 100).quantize(Decimal("0.01"))
             recebido = valor if random.random() > 0.1 else Decimal("0")
-            # fat_unitario por veiculo
+
+            # fat_unitario por veículo — campo `contrato` preenchido
             for vid in veics_contrato:
                 trab = random.randint(20, 30)
                 db.add(models.FatUnitario(
                     mes        = mes,
                     id_veiculo = vid,
                     id_empresa = empresa.id,
+                    contrato   = nome_contrato,
                     medicao    = Decimal(str(round(random.uniform(3_000, 12_000), 2))),
                     trabalhado = trab,
                     parado     = 30 - trab,
                 ))
-            # fatura mensal
-            venc = mes + timedelta(days=30)
+
+            # fatura mensal consolidada — numero_fatura sequencial por empresa
+            fat_seq[empresa.id] = fat_seq.get(empresa.id, 0) + 1
+            venc   = mes + timedelta(days=30)
             status = "Recebido" if recebido > 0 else "Pendente"
             db.add(models.FaturamentoMensal(
+                numero_fatura      = fat_seq[empresa.id],
                 id_empresa         = empresa.id,
                 id_contrato        = contrato.id,
                 id_cliente         = contrato.cliente_id,
@@ -262,16 +363,16 @@ def seed_faturamento(db, empresas, contratos, veiculos):
                 status_imposto     = "Pago" if recebido > 0 else "Pendente",
             ))
             rows.append(mes)
+
             # avança um mês
-            if mes.month == 12:
-                mes = date(mes.year + 1, 1, 1)
-            else:
-                mes = date(mes.year, mes.month + 1, 1)
+            mes = add_months(mes, 1)
+
     db.flush()
     print(f"  OK {len(rows)} meses de faturamento unitário")
 
 
-def seed_seguros(db, empresas, veiculos):
+def seed_seguros(db, empresas, veiculos, corretores):
+    """Cria apólices de seguro com parcelas mensais usando aritmética de datas correta."""
     apolices = []
     todos_veics = list(veiculos)
     random.shuffle(todos_veics)
@@ -280,12 +381,14 @@ def seed_seguros(db, empresas, veiculos):
     for i, (empresa, chunk) in enumerate(zip(empresas, chunks)):
         if not chunk:
             continue
-        inicio = ago(random.randint(60, 300))
+        inicio = ago(random.randint(60, 400))
         fim    = inicio + timedelta(days=365)
         valor_total = Decimal(str(round(sum(random.uniform(8_000, 25_000) for _ in chunk), 2)))
-        apolice = models.Seguro(
+        corretor = random.choice(corretores)
+        apolice  = models.Seguro(
             numero_apolice      = f"AP-{2025 + i}-{1000 + i:04d}",
             seguradora          = random.choice(SEGURADORAS),
+            corretor_id         = corretor.id,
             modelo_cobertura    = random.choice(COBERTURAS),
             id_empresa          = empresa.id,
             data_inicio         = inicio,
@@ -299,24 +402,19 @@ def seed_seguros(db, empresas, veiculos):
         db.flush()
 
         for v in chunk:
-            premio = Decimal(str(round(random.uniform(8_000, 25_000), 2)))
+            premio      = Decimal(str(round(random.uniform(8_000, 25_000), 2)))
+            parcela_val = (premio / 12).quantize(Decimal("0.01"))
             db.add(models.SeguroVeiculo(
                 apolice_id       = apolice.id,
                 id_veiculo       = v.id,
                 valor_veiculo    = premio,
                 cobre_implemento = v.implemento is not None,
             ))
-            # Parcelas mensais
-            parcela_val = (premio / 12).quantize(Decimal("0.01"))
+            # Parcelas mensais — aritmética correta com add_months()
+            dia_venc = apolice.dia_vencimento or 10
+            base_parc = date(inicio.year, inicio.month, min(dia_venc, calendar.monthrange(inicio.year, inicio.month)[1]))
             for m in range(12):
-                venc = date(inicio.year, inicio.month, apolice.dia_vencimento or 10)
-                if venc.month + m > 12:
-                    venc = date(venc.year + 1, (venc.month + m - 1) % 12 + 1, venc.day)
-                else:
-                    try:
-                        venc = date(venc.year, venc.month + m, venc.day)
-                    except ValueError:
-                        continue
+                venc = add_months(base_parc, m)
                 db.add(models.SeguroMensal(
                     apolice_id = apolice.id,
                     vencimento = venc,
@@ -334,13 +432,13 @@ def seed_seguros(db, empresas, veiculos):
 def seed_rastreamento(db, empresas, veiculos):
     for v in veiculos:
         empresa = next((e for e in empresas if e.id == v.id_empresa), empresas[0])
-        inicio = ago(random.randint(100, 700))
-        venc   = inicio + timedelta(days=365)
+        inicio  = ago(random.randint(100, 900))
+        venc    = inicio + timedelta(days=365)
         db.add(models.Rastreamento(
             id_veiculo           = v.id,
             id_empresa           = empresa.id,
             empresa_rastreamento = random.choice(RASTREADORES),
-            numero_contrato      = f"RAST-{random.randint(10000,99999)}",
+            numero_contrato      = f"RAST-{random.randint(10000, 99999)}",
             modelo_rastreador    = random.choice(MODELOS_RAST),
             tem_bloqueador       = random.choice([True, False]),
             valor_mensal         = Decimal(str(round(random.uniform(80, 250), 2))),
@@ -355,27 +453,34 @@ def seed_rastreamento(db, empresas, veiculos):
 
 
 def seed_debitos_e_multas(db, empresas, veiculos):
+    """Gera IPVA + licenciamento para 2022–2026, com multas aleatórias por veículo/ano."""
     debitos_criados = 0
     multas_criadas  = 0
 
     for v in veiculos:
         empresa = next((e for e in empresas if e.id == v.id_empresa), empresas[0])
-        for ano in [2024, 2025]:
+        for ano in [2022, 2023, 2024, 2025, 2026]:
             valor_ipva = Decimal(str(round(random.uniform(1_800, 8_500), 2)))
             valor_lic  = Decimal(str(round(random.uniform(200, 600), 2)))
             status_ipva = random.choices(["Pago", "Pendente"], weights=[70, 30])[0]
             status_lic  = random.choices(["Pago", "Pendente"], weights=[75, 25])[0]
 
+            # Para 2026, vencimentos no primeiro semestre
+            mes_ipva_max = 5 if ano == 2026 else 12
+            mes_lic_max  = 5 if ano == 2026 else 12
+            mes_lic_min  = 4 if ano == 2026 else 8
+
             dd = models.DebitoDocumental(
                 id_veiculo              = v.id,
                 id_empresa              = empresa.id,
                 exercicio               = ano,
+                ano_ref_ipva            = ano,
                 valor_ipva              = valor_ipva,
-                vencimento_ipva         = date(ano, random.randint(2, 5), random.randint(1, 28)),
+                vencimento_ipva         = date(ano, random.randint(2, mes_ipva_max), random.randint(1, 28)),
                 status_ipva             = status_ipva,
                 valor_ipva_pago         = valor_ipva if status_ipva == "Pago" else None,
                 valor_licenciamento     = valor_lic,
-                vencimento_licenciamento= date(ano, random.randint(8, 11), random.randint(1, 28)),
+                vencimento_licenciamento= date(ano, random.randint(mes_lic_min, mes_lic_max), random.randint(1, 28)),
                 status_licenciamento    = status_lic,
                 valor_licenciamento_pago= valor_lic if status_lic == "Pago" else None,
                 valor_multas            = Decimal("0"),
@@ -384,9 +489,12 @@ def seed_debitos_e_multas(db, empresas, veiculos):
             db.flush()
             debitos_criados += 1
 
-            # 0–2 multas por veículo por ano
-            for _ in range(random.randint(0, 2)):
-                data_inf = rand_date(date(ano, 1, 1), date(ano, 12, 31))
+            # 0–2 multas por veículo por ano (menos para 2026 — ano em curso)
+            max_multas = 1 if ano == 2026 else 2
+            for _ in range(random.randint(0, max_multas)):
+                # Data de infração dentro do ano (não excede hoje para ano atual)
+                data_fim_ano = min(date(ano, 12, 31), today()) if ano == date.today().year else date(ano, 12, 31)
+                data_inf = rand_date(date(ano, 1, 1), data_fim_ano)
                 valor_m  = Decimal(str(random.choice([88.38, 130.16, 195.23, 293.47])))
                 status_m = random.choices(
                     ["Pago", "Pendente", "Indicado", "Cancelado"],
@@ -398,7 +506,7 @@ def seed_debitos_e_multas(db, empresas, veiculos):
                     id_empresa           = empresa.id,
                     debito_documental_id = dd.id,
                     exercicio            = ano,
-                    ait                  = f"AIT-{random.randint(100000,999999)}",
+                    ait                  = f"AIT-{random.randint(100_000, 999_999)}",
                     orgao_emissor        = random.choice(ORGAOS),
                     data_infracao        = data_inf,
                     motivo_infracao      = random.choice(MOTIVOS_INFRACAO),
@@ -423,18 +531,29 @@ def seed_debitos_e_multas(db, empresas, veiculos):
 
 
 def seed_ordens_servico(db, empresas, veiculos):
-    os_criadas = 0
-    for v in random.sample(veiculos, min(25, len(veiculos))):
+    """Gera OS finalizadas distribuídas entre 2022 e 2026 para todos os veículos."""
+    os_criadas  = 0
+    os_counters = {}  # ano -> contador sequencial
+
+    # Todos os veículos recebem pelo menos 1 OS; amostra maior recebe mais
+    amostra_grande = random.sample(veiculos, min(30, len(veiculos)))
+    amostra_pequena = [v for v in veiculos if v not in amostra_grande]
+
+    def _criar_os_para(v, qtd, data_inicio_range, data_fim_range):
+        nonlocal os_criadas
         empresa = next((e for e in empresas if e.id == v.id_empresa), empresas[0])
-        for _ in range(random.randint(1, 4)):
-            data_exec = rand_date(ago(540), ago(10))
+        for _ in range(qtd):
+            data_exec  = rand_date(data_inicio_range, data_fim_range)
             fornecedor = random.choice(FORNECEDORES_OS)
             sistema    = random.choice(SISTEMAS)
             servico    = random.choice(SERVICOS)
             total_os   = Decimal(str(round(random.uniform(500, 15_000), 2)))
-            numero_os  = f"OS-{data_exec.year}-{os_criadas+1:04d}"
 
-            os = models.OrdemServico(
+            ano_os = data_exec.year
+            os_counters[ano_os] = os_counters.get(ano_os, 0) + 1
+            numero_os = f"OS-{ano_os}-{os_counters[ano_os]:04d}"
+
+            os_obj = models.OrdemServico(
                 numero_os       = numero_os,
                 status_os       = "finalizada",
                 id_veiculo      = v.id,
@@ -450,24 +569,24 @@ def seed_ordens_servico(db, empresas, veiculos):
                 data_entrada    = data_exec - timedelta(days=2),
                 data_execucao   = data_exec,
             )
-            db.add(os)
+            db.add(os_obj)
             db.flush()
 
             # Item da OS
             item = models.OsItem(
-                os_id    = os.id,
-                categoria= "Serviço",
-                sistema  = sistema,
-                servico  = servico,
-                qtd_itens= 1,
+                os_id     = os_obj.id,
+                categoria = "Serviço",
+                sistema   = sistema,
+                servico   = servico,
+                qtd_itens = 1,
             )
             db.add(item)
             db.flush()
 
-            # NF
+            # Nota Fiscal
             nf = models.NotaFiscal(
-                os_id          = os.id,
-                numero_nf      = f"NF-{random.randint(1000,9999)}",
+                os_id          = os_obj.id,
+                numero_nf      = f"NF-{random.randint(1000, 9999)}",
                 tipo_nf        = "Servico",
                 id_empresa     = empresa.id,
                 fornecedor     = fornecedor,
@@ -487,11 +606,11 @@ def seed_ordens_servico(db, empresas, veiculos):
             ))
 
             # Parcelas (1–3)
-            n_parc = random.randint(1, 3)
+            n_parc     = random.randint(1, 3)
             valor_parc = (total_os / n_parc).quantize(Decimal("0.01"))
             for p in range(n_parc):
                 venc_parc = data_exec + timedelta(days=30 * (p + 1))
-                pago = venc_parc < today() and random.random() > 0.2
+                pago      = venc_parc < today() and random.random() > 0.2
                 db.add(models.ManutencaoParcela(
                     nf_id            = nf.id,
                     nota             = nf.numero_nf,
@@ -507,25 +626,46 @@ def seed_ordens_servico(db, empresas, veiculos):
 
             os_criadas += 1
 
+    # Veículos com histórico longo: OS distribuídas em 2022–2026
+    for v in amostra_grande:
+        _criar_os_para(v, random.randint(2, 5), ago(1460), ago(10))
+
+    # Veículos com menos OS: foco em 2024–2026
+    for v in amostra_pequena:
+        _criar_os_para(v, random.randint(1, 2), ago(730), ago(10))
+
     db.flush()
-    print(f"  OK {os_criadas} ordens de serviço finalizadas")
+    print(f"  OK {os_criadas} ordens de serviço finalizadas (2022–2026)")
 
 
 def seed_reembolsos(db, empresas, veiculos, contratos):
+    """Gera reembolsos distribuídos em 2022–2026 (~60 registros).
+
+    Popula Reembolso.recibo com numeração sequencial por empresa
+    (ex: 'REC-0001', 'REC-0002', …) para que a coluna Recibo na UI não fique vazia.
+    """
+    # Contador sequencial de recibo por empresa (chave = empresa.id)
+    recibo_seq: dict[int, int] = {}
+
     count = 0
-    for _ in range(30):
-        v       = random.choice(veiculos)
-        empresa = next((e for e in empresas if e.id == v.id_empresa), empresas[0])
-        contrato= random.choice(contratos)
-        emissao = rand_date(ago(365), ago(10))
-        valor   = Decimal(str(round(random.uniform(200, 5_000), 2)))
-        recebido= random.random() > 0.3
+    for _ in range(60):
+        v        = random.choice(veiculos)
+        empresa  = next((e for e in empresas if e.id == v.id_empresa), empresas[0])
+        contrato = random.choice(contratos)
+        emissao  = rand_date(ago(1460), ago(5))
+        valor    = Decimal(str(round(random.uniform(200, 5_000), 2)))
+        recebido = random.random() > 0.3
+
+        recibo_seq[empresa.id] = recibo_seq.get(empresa.id, 0) + 1
+        recibo_num = f"{recibo_seq[empresa.id]:05d}"
+
         db.add(models.Reembolso(
             tipo               = random.choice(["Multa de Trânsito", "Franquia de Seguro", "Manutenção"]),
             id_empresa         = empresa.id,
             id_contrato        = contrato.id,
             id_cliente         = contrato.cliente_id,
             id_veiculo         = v.id,
+            recibo             = recibo_num,
             emissao            = emissao,
             vencimento         = emissao + timedelta(days=30),
             empresa            = contrato.nome_cliente,
@@ -554,12 +694,13 @@ def run(reset: bool = False):
     db = SessionLocal()
     try:
         print("[*] Seedando Aspen...")
-        empresas  = seed_empresas(db)
-        clientes  = seed_clientes(db)
-        veiculos  = seed_frota(db, empresas)
-        contratos = seed_contratos(db, empresas, clientes, veiculos)
+        empresas   = seed_empresas(db)
+        corretores = seed_corretores(db)
+        clientes   = seed_clientes(db)
+        veiculos   = seed_frota(db, empresas)
+        contratos  = seed_contratos(db, empresas, clientes, veiculos)
         seed_faturamento(db, empresas, contratos, veiculos)
-        seed_seguros(db, empresas, veiculos)
+        seed_seguros(db, empresas, veiculos, corretores)
         seed_rastreamento(db, empresas, veiculos)
         seed_debitos_e_multas(db, empresas, veiculos)
         seed_ordens_servico(db, empresas, veiculos)
