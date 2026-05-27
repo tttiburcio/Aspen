@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { brl, pct, dias, brlShort } from '../utils/format'
 import VehicleModal from '../components/VehicleModal'
 import VehicleKmBadge from '../components/tracker/VehicleKmBadge'
@@ -7,79 +7,62 @@ import { useTrackerData } from '../hooks/useTrackerData'
 import { useCompanies } from '../contexts/CompanyContext'
 import EmptyState from '../components/EmptyState'
 import {
-  Search, ChevronUp, ChevronDown, ChevronsUpDown,
-  Filter, X, MapPin, Flame, AlertTriangle, ZapOff, ExternalLink, Truck
+  Search, X, MapPin, Flame, ZapOff, Truck,
+  TrendingUp, TrendingDown, DollarSign, BarChart3,
 } from 'lucide-react'
-import { HIGH_USAGE_THRESHOLD, IDLE_KM_MONTH } from '../constants/trackerThresholds'
+import { HIGH_USAGE_THRESHOLD } from '../constants/trackerThresholds'
 import { normalizePlaca } from '../utils/trackerApi'
 
 const MAPWS_BASE = 'http://localhost:5174'
 
-const STATUS_COLORS = {
-  'ATIVO':      'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'LOCADO':     'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'FROTA':      'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:text-emerald-700 dark:border-emerald-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'ADM':        'bg-blue-50 text-blue-900 border border-blue-200 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'ADMINISTRAÇÃO': 'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'ADMINISTRACAO': 'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'VENDIDO':    'bg-gray-50 text-gray-900 border border-gray-200 dark:text-gray-300 dark:border-gray-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'DESATIVADO': 'bg-red-50 text-red-900 border border-red-200 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'MANUT':      'bg-amber-50 text-amber-600 border border-amber-200 dark:text-amber-600 dark:border-amber-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'INATIVO':    'bg-red-50 text-red-900 border border-red-200 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-  'PARADO':     'bg-red-50 text-red-900 border border-red-200 dark:text-red-300 dark:border-red-700/40 text-xs font-bold px-2 py-0.5 rounded-full inline-block select-none shadow-sm',
-}
-
-function statusBadge(status) {
-  const s = (status || '').toUpperCase()
-  const cls = STATUS_COLORS[s]
-  if (cls) return <span className={cls}>{status}</span>
-  if (s.includes('FROTA') || s.includes('ATIVO') || s.includes('LOCADO')) {
-    return <span className={STATUS_COLORS['FROTA']}>{status}</span>
-  }
-  if (s.includes('ADM') || s.includes('ADMINISTRAÇÃO') || s.includes('ADMINISTRACAO')) {
-    return <span className={STATUS_COLORS['ADM']}>{status}</span>
-  }
-  if (s.includes('VENDIDO')) {
-    return <span className={STATUS_COLORS['VENDIDO']}>{status}</span>
-  }
-  if (s.includes('DESATIVADO') || s.includes('INATIVO') || s.includes('PARADO')) {
-    return <span className={STATUS_COLORS['DESATIVADO']}>{status}</span>
-  }
-  return <span style={{ backgroundColor: '#fffbeb', color: '#78350f', borderColor: '#fde68a', borderWidth: '1px', borderStyle: 'solid', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block', whiteSpace: 'nowrap' }}>{status || '—'}</span>
-}
-
-function SortIcon({ col, sortCol, sortDir }) {
-  if (sortCol !== col) return <ChevronsUpDown className="w-3 h-3 opacity-20" />
-  return sortDir === 'asc'
-    ? <ChevronUp   className="w-3 h-3 text-g-300" />
-    : <ChevronDown className="w-3 h-3 text-g-300" />
-}
-
-const COLUMNS = [
-  { key: 'placa',              label: 'Placa',        align: 'left',  fmt: v => <span className="font-mono font-bold text-g-200 text-sm tracking-wide">{v}</span> },
-  { key: 'modelo',             label: 'Modelo',       align: 'left',  fmt: v => <span className="text-g-400 text-sm">{v}</span> },
-  { key: 'status',             label: 'Status',       align: 'left',  fmt: v => statusBadge(v) },
-  { key: 'receita_total',      label: 'Receita',      align: 'left',  fmt: v => <span className="font-mono text-g-300 text-sm font-semibold tabular-nums">{brl(v)}</span> },
-  { key: 'custo_total',        label: 'Custo',        align: 'left',  fmt: v => <span className="font-mono text-g-500 text-sm tabular-nums">{brl(v)}</span> },
-  { key: 'margem',             label: 'Margem',       align: 'left',  fmt: v => (
-    <span className={`font-semibold text-sm tabular-nums ${v >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>{brl(v)}</span>
-  )},
-  { key: 'margem_pct',         label: '% Margem',     align: 'left',  fmt: v => (
-    <span className={`text-sm font-bold tabular-nums ${v >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>{pct(v)}</span>
-  )},
-  { key: 'dias_trabalhado',    label: 'Dias Trab.',   align: 'left',  fmt: v => <span className="text-g-500 text-sm tabular-nums">{dias(v)}</span> },
-  { key: 'receita_por_dia',    label: 'R$/Dia',       align: 'left',  fmt: v => v > 0
-    ? <span className="text-sm text-g-400 tabular-nums">{brlShort(v)}</span>
-    : <span className="text-g-700 text-sm">—</span> },
-  { key: 'custo_manutencao',   label: 'Manutenção',   align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
-  { key: 'custo_seguro',       label: 'Seguro',       align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
-  { key: 'custo_impostos',     label: 'Impostos',     align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
-  { key: 'custo_rastreamento', label: 'Rastreamento', align: 'left',  fmt: v => <span className="font-mono text-sm text-g-500 tabular-nums">{brl(v)}</span> },
-  { key: '_km_mes',            label: 'KM Tracker',   align: 'left',  fmt: () => null },
-]
-
 const EXCEPTIONS_STATUS = new Set(['VENDIDO', 'ADMINISTRAÇÃO', 'ADMINISTRACAO', 'ADM', 'DESATIVADO'])
 
+// ─── Status badge ──────────────────────────────────────────────────────────
+const STATUS_CLS = {
+  'FROTA':        'text-emerald-600 bg-emerald-300/15 border-emerald-600/30',
+  'ATIVO':        'text-emerald-600 bg-emerald-300/15 border-emerald-600/30',
+  'LOCADO':       'text-emerald-600 bg-emerald-300/15 border-emerald-600/30',
+  'ADMINISTRAÇÃO':          'text-sky-400     bg-sky-400/10     border-sky-600/30',
+  'MANUTENÇÃO':   'text-black-400   bg-gray-400/10   border-gray-600/30',
+  'VENDIDO':      'text-g-500       bg-g-800/50       border-g-700/30',
+  'INATIVO':      'text-purple-800     bg-purple-300/10     border-purple-600/30',
+  'DESATIVADO':   'text-red-400     bg-red-300/10     border-red-600/30',
+  'PARADO':       'text-red-400     bg-red-300/10     border-red-600/30',
+}
+
+function StatusBadge({ status }) {
+  const s = (status || '').toUpperCase()
+  const cls = STATUS_CLS[s]
+    ?? (s.includes('FROTA') || s.includes('ATIVO') || s.includes('LOCADO') ? STATUS_CLS['FROTA']
+      : s.includes('MANUT') ? STATUS_CLS['MANUTENÇÃO']
+      : s.includes('ADM')   ? STATUS_CLS['ADM']
+      : s.includes('VENDIDO') ? STATUS_CLS['VENDIDO']
+      : s.includes('INATIVO') || s.includes('DESATIVADO') || s.includes('PARADO') ? STATUS_CLS['INATIVO']
+      : 'text-g-500 bg-g-800/50 border-g-700/30')
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap ${cls}`}>
+      {status || '—'}
+    </span>
+  )
+}
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────
+function KpiCard({ icon: Icon, label, value, sub, accent = 'g-400' }) {
+  return (
+    <div className="card p-5 flex items-center gap-4">
+      <div className="p-3 bg-g-850 border border-g-800 rounded-xl shrink-0">
+        <Icon className={`w-5 h-5 text-${accent}`} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-g-600 text-[11px] uppercase tracking-wider font-semibold truncate">{label}</p>
+        <p className="text-g-100 font-bold text-2xl font-mono tabular-nums truncate leading-tight">{value}</p>
+        {sub && <p className="text-g-500 text-xs tabular-nums truncate mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ─── VehiclesPage ──────────────────────────────────────────────────────────
 export default function VehiclesPage({
   vehicles, year, regions = [], region, onRegionChange,
   trackerFilter = null, onTrackerFilterConsumed,
@@ -88,34 +71,29 @@ export default function VehiclesPage({
   const primarySigla = import.meta.env.VITE_PRIMARY_COMPANY_SIGLA || 'EMPRESA_A'
   const isTkj = selectedCompany?.sigla?.toUpperCase() === primarySigla.toUpperCase()
 
-  // Enrich vehicles with tracker km so the _km_mes column is sortable
   const { trackerOnline, trackerUsage, getVehicleKm, highUsageVehicles, idleVehicles } = useTrackerData({ year })
+
   const [selectedPlaca, setSelectedPlaca] = useState(null)
-  const [search, setSearch]               = useState('')
-  const [sortCol, setSortCol]             = useState('margem')
-  const [sortDir, setSortDir]             = useState('desc')
-  const [filterStatus, setFilterStatus]   = useState('')
-  const [showOnly, setShowOnly]           = useState(() => {
+  const [search,        setSearch]        = useState('')
+  const [sortCol,       setSortCol]       = useState('margem')
+  const [sortDir,       setSortDir]       = useState('desc')
+  const [filterStatus,  setFilterStatus]  = useState('')
+  const [filterImplemento, setFilterImplemento] = useState('')
+  const [showOnly, setShowOnly] = useState(() => {
     try { return trackerFilter || localStorage.getItem('vehicles_filter') || 'all' } catch { return 'all' }
   })
 
   useEffect(() => {
     if (trackerFilter && onTrackerFilterConsumed) onTrackerFilterConsumed()
-  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleShowOnly(val) {
     setShowOnly(val)
     try { localStorage.setItem('vehicles_filter', val) } catch {}
   }
 
-  const highUsagePlacas = useMemo(
-    () => new Set(highUsageVehicles.map(v => v.placa)),
-    [highUsageVehicles],
-  )
-  const idlePlacas = useMemo(
-    () => new Set(idleVehicles.map(v => v.placa)),
-    [idleVehicles],
-  )
+  const highUsagePlacas = useMemo(() => new Set(highUsageVehicles.map(v => v.placa)), [highUsageVehicles])
+  const idlePlacas      = useMemo(() => new Set(idleVehicles.map(v => v.placa)),      [idleVehicles])
 
   const isHighUsage = useMemo(() => {
     if (!selectedPlaca) return false
@@ -123,35 +101,31 @@ export default function VehiclesPage({
     return vkm !== null && vkm.kmDia > HIGH_USAGE_THRESHOLD
   }, [selectedPlaca, getVehicleKm])
 
-  const [filterImplemento, setFilterImplemento] = useState('')
-
   const vehiclesEnriched = useMemo(() =>
     vehicles.map(v => {
       const isAdm = v.placa && (v.placa.toUpperCase() === 'TJW7I85' || v.placa.toUpperCase() === 'ERA6A58')
-      const sVal = isAdm || (v.status && v.status.toUpperCase() === 'ADM') ? 'Administração' : v.status
-      // Para a empresa primária, todos os veículos em operação exibem 'Frota'
-      const displayStatus = isTkj && !EXCEPTIONS_STATUS.has((sVal || '').toUpperCase())
-        ? 'Frota'
-        : sVal
-      return {
-        ...v,
-        status: displayStatus,
-        _km_mes: getVehicleKm(v.placa)?.km ?? null
+      const sVal  = isAdm || (v.status && v.status.toUpperCase() === 'ADM') ? 'Administração' : v.status
+      const isException = EXCEPTIONS_STATUS.has((sVal || '').toUpperCase())
+
+      let displayStatus
+      if (v.tem_os_parado && !isException) {
+        // OS aberta com veículo parado → exibe Manutenção independente do status cadastral
+        displayStatus = 'Manutenção'
+      } else if (isTkj && !isException) {
+        // Empresa primária: oculta distinção Frota/Sublocado, mostra "Frota"
+        displayStatus = 'Frota'
+      } else {
+        displayStatus = sVal
       }
+
+      return { ...v, status: displayStatus, _km_mes: getVehicleKm(v.placa)?.km ?? null }
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vehicles, trackerUsage, isTkj],
   )
 
-  const statuses = useMemo(() =>
-    [...new Set(vehiclesEnriched.map(v => v.status).filter(Boolean))].sort(),
-    [vehiclesEnriched]
-  )
-
-  const implementos = useMemo(() =>
-    [...new Set(vehiclesEnriched.map(v => v.implemento).filter(Boolean))].sort(),
-    [vehiclesEnriched]
-  )
+  const statuses   = useMemo(() => [...new Set(vehiclesEnriched.map(v => v.status).filter(Boolean))].sort(),     [vehiclesEnriched])
+  const implementos = useMemo(() => [...new Set(vehiclesEnriched.map(v => v.implemento).filter(Boolean))].sort(), [vehiclesEnriched])
 
   const filtered = useMemo(() => {
     let list = [...vehiclesEnriched]
@@ -163,21 +137,18 @@ export default function VehiclesPage({
         v.marca.toLowerCase().includes(q)
       )
     }
-    if (filterStatus) list = list.filter(v => v.status === filterStatus)
+    if (filterStatus)     list = list.filter(v => v.status === filterStatus)
     if (filterImplemento) list = list.filter(v => v.implemento === filterImplemento)
     if (showOnly === 'profit')     list = list.filter(v => v.margem >= 0)
     if (showOnly === 'loss')       list = list.filter(v => v.margem < 0)
     if (showOnly === 'high_usage') list = list.filter(v => highUsagePlacas.has(normalizePlaca(v.placa)))
     if (showOnly === 'idle')       list = list.filter(v => idlePlacas.has(normalizePlaca(v.placa)))
-    list.sort((a, b) => {
-      let av = a[sortCol]
-      let bv = b[sortCol]
-      
-      // Coloca valores nulos sempre no final da lista
-      if ((av === null || av === undefined) && (bv === null || bv === undefined)) return 0;
-      if (av === null || av === undefined) return 1;
-      if (bv === null || bv === undefined) return -1;
 
+    list.sort((a, b) => {
+      let av = a[sortCol], bv = b[sortCol]
+      if (av == null && bv == null) return 0
+      if (av == null) return 1
+      if (bv == null) return -1
       if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av)
       return sortDir === 'asc' ? av - bv : bv - av
     })
@@ -189,305 +160,351 @@ export default function VehiclesPage({
     else { setSortCol(col); setSortDir('desc') }
   }
 
+  const thSort = (key, label, align = 'left') => (
+    <th key={key}
+      onClick={() => handleSort(key)}
+      className={`th whitespace-nowrap cursor-pointer hover:text-g-300 select-none ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      {label}{sortCol === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+    </th>
+  )
+
   const totals = useMemo(() => ({
-    receita_total:       filtered.reduce((s, v) => s + v.receita_total,       0),
-    custo_total:         filtered.reduce((s, v) => s + v.custo_total,         0),
-    margem:              filtered.reduce((s, v) => s + v.margem,              0),
-    dias_trabalhado:     filtered.reduce((s, v) => s + v.dias_trabalhado,     0),
-    custo_manutencao:    filtered.reduce((s, v) => s + v.custo_manutencao,    0),
-    custo_seguro:        filtered.reduce((s, v) => s + v.custo_seguro,        0),
-    custo_impostos:      filtered.reduce((s, v) => s + v.custo_impostos,      0),
-    custo_rastreamento:  filtered.reduce((s, v) => s + v.custo_rastreamento,  0),
+    receita_total:      filtered.reduce((s, v) => s + v.receita_total,      0),
+    custo_total:        filtered.reduce((s, v) => s + v.custo_total,        0),
+    margem:             filtered.reduce((s, v) => s + v.margem,             0),
+    dias_trabalhado:    filtered.reduce((s, v) => s + v.dias_trabalhado,    0),
+    custo_manutencao:   filtered.reduce((s, v) => s + v.custo_manutencao,   0),
+    custo_seguro:       filtered.reduce((s, v) => s + v.custo_seguro,       0),
+    custo_impostos:     filtered.reduce((s, v) => s + v.custo_impostos,     0),
+    custo_rastreamento: filtered.reduce((s, v) => s + v.custo_rastreamento, 0),
   }), [filtered])
 
+  const resetFilters = () => {
+    setSearch('')
+    if (onRegionChange) onRegionChange(null)
+    setFilterStatus('')
+    setFilterImplemento('')
+    handleShowOnly('all')
+  }
+
+  const hasActiveFilter = !!(region || filterStatus || filterImplemento || search || showOnly !== 'all')
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Combined Action & Search Row */}
-      <div className="flex flex-nowrap items-center justify-between gap-3 bg-g-900/40 p-2.5 rounded-2xl border border-g-800 shadow-sm overflow-x-auto select-none">
-        <div className="flex flex-nowrap items-center gap-2.5 flex-shrink-0">
-          {/* Search bar */}
-          <div className="relative min-w-[140px] max-w-[180px] flex-shrink-0">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-g-500" />
-            <input
-              type="text"
-              placeholder="Buscar..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-8 py-1.5 bg-g-950/60 border border-g-800 rounded-xl text-g-100 text-xs placeholder-g-600 focus:outline-none focus:border-emerald-500/40 transition-all focus:ring-4 focus:ring-emerald-500/5 shadow-inner"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-g-600 hover:text-g-300">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+    <div className="flex flex-col gap-6">
 
-          {/* Region Filter */}
-          {regions.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-shrink-0 select-none">
-              <span className="text-xs text-g-400">Região:</span>
-              <select
-                value={region || ''}
-                onChange={e => onRegionChange && onRegionChange(e.target.value || null)}
-                className="bg-g-950/60 border border-g-800 rounded-xl text-g-200 text-xs font-medium px-2 py-1.5 focus:outline-none focus:border-emerald-500/40 transition-all focus:ring-4 focus:ring-emerald-500/5 shadow-sm cursor-pointer select-none"
-              >
-                <option value="">Todas</option>
-                {regions.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-          )}
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          icon={DollarSign}
+          label="Receita filtrada"
+          value={brl(totals.receita_total)}
+          sub={`${filtered.length} veículo${filtered.length !== 1 ? 's' : ''}`}
+          accent="emerald-400"
+        />
+        <KpiCard
+          icon={TrendingDown}
+          label="Custo filtrado"
+          value={brl(totals.custo_total)}
+          sub={`Manutenção: ${brlShort(totals.custo_manutencao)}`}
+          accent="amber-400"
+        />
+        <KpiCard
+          icon={TrendingUp}
+          label="Margem filtrada"
+          value={brl(totals.margem)}
+          sub={totals.receita_total > 0
+            ? `${((totals.margem / totals.receita_total) * 100).toFixed(1)}% da receita`
+            : undefined}
+          accent={totals.margem >= 0 ? 'emerald-400' : 'red-400'}
+        />
+        <KpiCard
+          icon={BarChart3}
+          label="% Margem"
+          value={totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
+          sub={`${dias(totals.dias_trabalhado)} trabalhados`}
+          accent={totals.margem >= 0 ? 'emerald-400' : 'red-400'}
+        />
+      </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-1.5 flex-shrink-0 select-none">
-            <span className="text-xs text-g-400">Status:</span>
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              className="bg-g-950/60 border border-g-800 rounded-xl text-g-200 text-xs font-medium px-2 py-1.5 focus:outline-none focus:border-emerald-500/40 transition-all focus:ring-4 focus:ring-emerald-500/5 shadow-sm cursor-pointer select-none"
-            >
-              <option value="">Todos</option>
-              {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+      {/* ── Filtros ── */}
+      <div className="flex items-center gap-2 flex-wrap">
 
-          {/* Implement Filter */}
-          {implementos.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-shrink-0 select-none">
-              <span className="text-xs text-g-400">Implemento:</span>
-              <select
-                value={filterImplemento}
-                onChange={e => setFilterImplemento(e.target.value)}
-                className="bg-g-950/60 border border-g-800 rounded-xl text-g-200 text-xs font-medium px-2 py-1.5 focus:outline-none focus:border-emerald-500/40 transition-all focus:ring-4 focus:ring-emerald-500/5 shadow-sm cursor-pointer select-none"
-              >
-                <option value="">Todos</option>
-                {implementos.map(imp => <option key={imp} value={imp}>{imp}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Reset Button */}
-          {(region || filterStatus || filterImplemento || search || showOnly !== 'all') && (
-            <button
-              onClick={() => {
-                setSearch('')
-                if (onRegionChange) onRegionChange(null)
-                setFilterStatus('')
-                setFilterImplemento('')
-                handleShowOnly('all')
-              }}
-              className="flex items-center gap-1 flex-shrink-0 px-2 py-1.5 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold uppercase tracking-wide transition-all shadow-sm cursor-pointer select-none"
-            >
-              <X className="w-3.5 h-3.5" />
-              Limpar
+        {/* Busca */}
+        <div className="relative flex-1 min-w-52">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-g-600" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar placa, modelo ou marca…"
+            className="w-full pl-9 pr-9 py-2 bg-g-900 border border-g-800 rounded-lg text-g-300 text-sm placeholder-g-700 focus:outline-none focus:border-g-600 transition-colors"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X className="w-3.5 h-3.5 text-g-600 hover:text-g-400" />
             </button>
           )}
-
-          {/* Quick tracker filters */}
-          {trackerOnline === true && (highUsageVehicles.length > 0 || idleVehicles.length > 0) && (
-            <div className="flex items-center gap-1 flex-shrink-0 bg-g-950/40 border border-g-800 rounded-xl p-0.5 shadow-sm select-none">
-              {highUsageVehicles.length > 0 && (
-                <button
-                  onClick={() => handleShowOnly(showOnly === 'high_usage' ? 'all' : 'high_usage')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${
-                    showOnly === 'high_usage'
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'text-g-600 hover:text-red-400'
-                  }`}
-                >
-                  <Flame className="w-3.5 h-3.5" />
-                  {highUsageVehicles.length}
-                </button>
-              )}
-              {idleVehicles.length > 0 && (
-                <button
-                  onClick={() => handleShowOnly(showOnly === 'idle' ? 'all' : 'idle')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${
-                    showOnly === 'idle'
-                      ? 'bg-amber-500/20 text-amber-600'
-                      : 'text-g-600 hover:text-amber-600'
-                  }`}
-                >
-                  <ZapOff className="w-3.5 h-3.5" />
-                  {idleVehicles.length}
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Financial Filters, Badges & MapWS link */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="flex items-center gap-1 bg-g-950/60 border border-g-800 rounded-xl p-0.5 select-none flex-shrink-0">
-            {[
-              { val: 'all',    label: 'Todos' },
-              { val: 'profit', label: 'Lucrativos' },
-              { val: 'loss',   label: 'Deficitários' },
-            ].map(o => (
-              <button
-                key={o.val}
-                onClick={() => handleShowOnly(o.val)}
-                className={`px-3 py-1 rounded-lg text-[11px] font-semibold uppercase tracking-wide transition-all ${
-                  showOnly === o.val
-                    ? 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 shadow-sm'
-                    : 'text-g-500 hover:text-g-200'
+        {/* Região */}
+        {regions.length > 0 && (
+          <select value={region || ''} onChange={e => onRegionChange && onRegionChange(e.target.value || null)}
+            className="py-2 px-3 bg-g-900 border border-g-800 rounded-lg text-g-300 text-sm focus:outline-none focus:border-g-600 transition-colors">
+            <option value="">Todas as regiões</option>
+            {regions.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        )}
+
+        {/* Status */}
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="py-2 px-3 bg-g-900 border border-g-800 rounded-lg text-g-300 text-sm focus:outline-none focus:border-g-600 transition-colors">
+          <option value="">Todos os status</option>
+          {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+
+        {/* Implemento */}
+        {implementos.length > 0 && (
+          <select value={filterImplemento} onChange={e => setFilterImplemento(e.target.value)}
+            className="py-2 px-3 bg-g-900 border border-g-800 rounded-lg text-g-300 text-sm focus:outline-none focus:border-g-600 transition-colors">
+            <option value="">Todos os implementos</option>
+            {implementos.map(imp => <option key={imp} value={imp}>{imp}</option>)}
+          </select>
+        )}
+
+        {/* Resultado financeiro */}
+        <div className="flex items-center gap-1 bg-g-900 border border-g-800 rounded-lg p-0.5">
+          {[
+            { val: 'all',    label: 'Todos'       },
+            { val: 'profit', label: 'Lucrativos'  },
+            { val: 'loss',   label: 'Deficitários' },
+          ].map(o => (
+            <button key={o.val} onClick={() => handleShowOnly(o.val)}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide transition-all ${
+                showOnly === o.val
+                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm'
+                  : 'text-g-500 hover:text-g-200'
+              }`}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtros tracker */}
+        {trackerOnline === true && (highUsageVehicles.length > 0 || idleVehicles.length > 0) && (
+          <div className="flex items-center gap-1 bg-g-900 border border-g-800 rounded-lg p-0.5">
+            {highUsageVehicles.length > 0 && (
+              <button onClick={() => handleShowOnly(showOnly === 'high_usage' ? 'all' : 'high_usage')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  showOnly === 'high_usage' ? 'bg-red-500/20 text-red-400' : 'text-g-600 hover:text-red-400'
                 }`}
-              >
-                {o.label}
+                title="Alto uso de KM">
+                <Flame className="w-3.5 h-3.5" /> {highUsageVehicles.length}
               </button>
-            ))}
-          </div>
-
-          <span className="text-g-600 text-xs font-semibold bg-g-950/40 border border-g-800/60 px-2.5 py-1.5 rounded-xl tabular-nums select-none flex-shrink-0">
-            {filtered.length} {filtered.length === 1 ? 'veículo' : 'veículos'}
-          </span>
-          <div className="flex-shrink-0">
-            <TrackerStatusBadge online={trackerOnline} />
-          </div>
-          {trackerOnline === true && (
-            <a
-              href={MAPWS_BASE}
-              target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wide bg-indigo-50/5 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer shadow-sm select-none flex-shrink-0"
-            >
-              <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-              MapWS
-            </a>
-          )}
-        </div>
-      </div>
-
-
-      {/* Summary totals */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="card p-3.5 flex flex-col gap-1">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">Receita Filtrada</span>
-          <span className="text-g-300 font-semibold font-mono text-xl tabular-nums">{brl(totals.receita_total)}</span>
-        </div>
-        <div className="card p-3.5 flex flex-col gap-1">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">Custo Filtrado</span>
-          <span className="text-g-500 font-semibold font-mono text-xl tabular-nums">{brl(totals.custo_total)}</span>
-        </div>
-        <div className="card p-3.5 flex flex-col gap-1">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">Margem Filtrada</span>
-          <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
-            {brl(totals.margem)}
-          </span>
-        </div>
-        <div className="card p-3.5 flex flex-col gap-1">
-          <span className="text-g-600 text-[10px] uppercase tracking-widest font-semibold">% Margem</span>
-          <span className={`font-bold font-mono text-xl tabular-nums ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
-            {totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
-          </span>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-left">
-            <thead className="bg-g-900 border-b border-g-800 sticky top-0">
-              <tr>
-                {COLUMNS.map(col => (
-                  <th
-                    key={col.key}
-                    onClick={() => handleSort(col.key)}
-                    className="th text-left cursor-pointer hover:text-g-200 select-none transition-colors"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>{col.label}</span>
-                      <SortIcon col={col.key} sortCol={sortCol} sortDir={sortDir} />
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((v) => {
-                const vkm = getVehicleKm(v.placa)
-                return (
-                  <tr
-                    key={v.placa}
-                    className="table-row"
-                    onClick={() => setSelectedPlaca(v.placa)}
-                  >
-                    {COLUMNS.map(col => (
-                      <td key={col.key} className="td text-left">
-                        {col.key === '_km_mes'
-                          ? <VehicleKmBadge kmValue={vkm?.km ?? null} dailyKm={vkm?.kmDia} isIdle={idlePlacas.has(normalizePlaca(v.placa))} />
-                          : col.key === 'placa'
-                          ? (
-                            <span className="inline-flex items-center gap-1.5">
-                              <span className="font-mono font-bold text-g-50 text-[15px] tracking-wide">{v.placa}</span>
-                              {vkm?.kmDia > HIGH_USAGE_THRESHOLD && <Flame className="w-3 h-3 text-red-400" />}
-                              {idlePlacas.has(normalizePlaca(v.placa)) && <ZapOff className="w-3 h-3 text-amber-600" />}
-                            </span>
-                          )
-                          : col.fmt(v[col.key])}
-                      </td>
-                    ))}
-                  </tr>
-                )
-              })}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={COLUMNS.length} className="td p-0 border-b-0">
-                    <EmptyState 
-                      icon={Truck}
-                      title="Nenhum veículo encontrado"
-                      message="Tente ajustar os filtros ou limpar sua busca."
-                    />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-            {filtered.length > 1 && (
-              <tfoot className="bg-g-900/80 border-t-2 border-g-700">
-                <tr>
-                  <td className="td text-g-500 text-sm font-semibold uppercase tracking-wide" colSpan={3}>
-                    TOTAIS ({filtered.length})
-                  </td>
-                  <td className="td">
-                    <span className="text-g-300 font-semibold tabular-nums text-sm">{brl(totals.receita_total)}</span>
-                  </td>
-                  <td className="td">
-                    <span className="text-g-500 tabular-nums text-sm">{brl(totals.custo_total)}</span>
-                  </td>
-                  <td className="td">
-                    <span className={`font-bold tabular-nums text-sm ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
-                      {brl(totals.margem)}
-                    </span>
-                  </td>
-                  <td className="td">
-                    <span className={`text-sm font-bold tabular-nums ${totals.margem >= 0 ? 'text-emerald-700' : 'text-red-500'}`}>
-                      {totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
-                    </span>
-                  </td>
-                  <td className="td">
-                    <span className="text-g-600 text-sm tabular-nums">{dias(totals.dias_trabalhado)}</span>
-                  </td>
-                  <td className="td text-g-700 text-sm">—</td>
-                  <td className="td">
-                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_manutencao)}</span>
-                  </td>
-                  <td className="td">
-                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_seguro)}</span>
-                  </td>
-                  <td className="td">
-                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_impostos)}</span>
-                  </td>
-                  <td className="td">
-                    <span className="text-sm text-g-500 tabular-nums">{brl(totals.custo_rastreamento)}</span>
-                  </td>
-                  <td className="td text-g-700 text-sm">—</td>
-                </tr>
-              </tfoot>
             )}
-          </table>
-        </div>
+            {idleVehicles.length > 0 && (
+              <button onClick={() => handleShowOnly(showOnly === 'idle' ? 'all' : 'idle')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  showOnly === 'idle' ? 'bg-amber-500/20 text-amber-500' : 'text-g-600 hover:text-amber-500'
+                }`}
+                title="Veículos ociosos">
+                <ZapOff className="w-3.5 h-3.5" /> {idleVehicles.length}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Limpar filtros */}
+        {hasActiveFilter && (
+          <button onClick={resetFilters}
+            className="flex items-center gap-1 px-2.5 py-2 rounded-lg border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold uppercase tracking-wide transition-all">
+            <X className="w-3.5 h-3.5" /> Limpar
+          </button>
+        )}
+
+        {/* Contador */}
+        <span className="text-g-500 text-xs font-semibold bg-g-850 border border-g-800 px-2.5 py-2 rounded-lg tabular-nums font-mono">
+          {filtered.length} {filtered.length === 1 ? 'veículo' : 'veículos'}
+        </span>
+
+        {/* Status tracker + link MapWS */}
+        {trackerOnline === true && (
+          <a href={MAPWS_BASE} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide text-blue-800 border border-blue-500/20 hover:bg-blue-500/10 hover:border-indigo-500/30 transition-all shadow-sm">
+            <MapPin className="w-3.5 h-3.5" /> Rastreamento
+          </a>
+        )}
       </div>
 
-      <p className="text-g-800 text-xs text-center">
-        Clique em qualquer veículo para ver análise detalhada
+      {/* ── Tabela ── */}
+      <div className="card overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={Truck}
+              title="Nenhum veículo encontrado"
+              message="Tente ajustar os filtros ou limpar sua busca."
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-g-850 border-b border-g-800">
+                <tr>
+                  {thSort('placa',              'Placa')}
+                  {thSort('modelo',             'Modelo')}
+                  <th className="th">Status</th>
+                  {thSort('receita_total',      'Receita',       'left')}
+                  {thSort('custo_total',        'Custo',         'left')}
+                  {thSort('margem',             'Margem',        'left')}
+                  {thSort('margem_pct',         '% Margem',      'left')}
+                  {thSort('dias_trabalhado',    'Dias Trab.',    'left')}
+                  {thSort('receita_por_dia',    'R$/Dia',        'left')}
+                  {thSort('custo_manutencao',   'Manutenção',    'left')}
+                  {thSort('custo_seguro',       'Seguro',        'left')}
+                  {thSort('custo_impostos',     'Impostos',      'left')}
+                  {thSort('custo_rastreamento', 'Rastreamento',  'left')}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(v => {
+                  const vkm = getVehicleKm(v.placa)
+                  const isIdle   = idlePlacas.has(normalizePlaca(v.placa))
+                  const isHigh   = vkm?.kmDia > HIGH_USAGE_THRESHOLD
+                  return (
+                    <tr key={v.placa}
+                      onClick={() => setSelectedPlaca(v.placa)}
+                      className="border-b border-g-800 hover:bg-g-850/70 transition-colors cursor-pointer">
+
+                      {/* Placa */}
+                      <td className="td whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="font-bold text-g-100 tracking-wide">{v.placa}</span>
+                          {isHigh && <Flame   className="w-3 h-3 text-red-400 shrink-0" />}
+                          {isIdle && <ZapOff  className="w-3 h-3 text-amber-500 shrink-0" />}
+                        </span>
+                      </td>
+
+                      {/* Modelo */}
+                      <td className="td whitespace-nowrap">
+                        <span className="text-[14px] text-g-200">{v.modelo}</span>
+                        {v.implemento && (
+                          <span className="ml-1.5 text-g-500 text-[11px]">{v.implemento}</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="td whitespace-nowrap">
+                        <StatusBadge status={v.status} />
+                      </td>
+
+                      {/* Receita */}
+                      <td className="td whitespace-nowrap text-left font-bold text-g-100 tabular-nums">
+                        {brl(v.receita_total)}
+                      </td>
+
+                      {/* Custo */}
+                      <td className="td whitespace-nowrap text-left text-g-200 tabular-nums">
+                        {brl(v.custo_total)}
+                      </td>
+
+                      {/* Margem */}
+                      <td className="td whitespace-nowrap text-left font-bold tabular-nums">
+                        <span className={v.margem >= 0 ? 'text-emerald-800' : 'text-red-500'}>
+                          {brl(v.margem)}
+                        </span>
+                      </td>
+
+                      {/* % Margem */}
+                      <td className="td whitespace-nowrap text-left font-bold tabular-nums">
+                        <span className={v.margem_pct >= 0 ? 'text-emerald-800' : 'text-red-500'}>
+                          {pct(v.margem_pct)}
+                        </span>
+                      </td>
+
+                      {/* Dias trab. */}
+                      <td className="td whitespace-nowrap text-left text-g-200 tabular-nums">
+                        {dias(v.dias_trabalhado)}
+                      </td>
+
+                      {/* R$/Dia */}
+                      <td className="td whitespace-nowrap text-left tabular-nums">
+                        {v.receita_por_dia > 0
+                          ? <span className="text-g-300">{brlShort(v.receita_por_dia)}</span>
+                          : <span className="text-g-700">—</span>}
+                      </td>
+
+                      {/* Manutenção */}
+                      <td className="td whitespace-nowrap text-left text-g-200 tabular-nums">
+                        {brl(v.custo_manutencao)}
+                      </td>
+
+                      {/* Seguro */}
+                      <td className="td whitespace-nowrap text-left text-g-200 tabular-nums">
+                        {brl(v.custo_seguro)}
+                      </td>
+
+                      {/* Impostos */}
+                      <td className="td whitespace-nowrap text-left text-g-200 tabular-nums">
+                        {brl(v.custo_impostos)}
+                      </td>
+
+                      {/* Rastreamento */}
+                      <td className="td whitespace-nowrap text-left text-g-200 tabular-nums">
+                        {brl(v.custo_rastreamento)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+
+              {/* Totais */}
+              {filtered.length > 1 && (
+                <tfoot className="bg-g-850 border-t-2 border-g-700">
+                  <tr>
+                    <td colSpan={3} className="td text-g-500 uppercase text-[10px] font-bold tracking-wider whitespace-nowrap">
+                      Totais ({filtered.length})
+                    </td>
+                    <td className="td text-right font-mono font-bold text-g-100 tabular-nums whitespace-nowrap">
+                      {brl(totals.receita_total)}
+                    </td>
+                    <td className="td text-right font-mono text-g-400 tabular-nums whitespace-nowrap">
+                      {brl(totals.custo_total)}
+                    </td>
+                    <td className="td text-right font-mono font-bold tabular-nums whitespace-nowrap">
+                      <span className={totals.margem >= 0 ? 'text-emerald-500' : 'text-red-400'}>
+                        {brl(totals.margem)}
+                      </span>
+                    </td>
+                    <td className="td text-right font-bold tabular-nums whitespace-nowrap">
+                      <span className={totals.margem >= 0 ? 'text-emerald-500' : 'text-red-400'}>
+                        {totals.receita_total > 0 ? pct(totals.margem / totals.receita_total * 100) : '—'}
+                      </span>
+                    </td>
+                    <td className="td text-right text-g-400 tabular-nums whitespace-nowrap">
+                      {dias(totals.dias_trabalhado)}
+                    </td>
+                    <td className="td text-g-700 text-right">—</td>
+                    <td className="td text-right font-mono text-g-400 tabular-nums whitespace-nowrap">
+                      {brl(totals.custo_manutencao)}
+                    </td>
+                    <td className="td text-right font-mono text-g-400 tabular-nums whitespace-nowrap">
+                      {brl(totals.custo_seguro)}
+                    </td>
+                    <td className="td text-right font-mono text-g-400 tabular-nums whitespace-nowrap">
+                      {brl(totals.custo_impostos)}
+                    </td>
+                    <td className="td text-right font-mono text-g-400 tabular-nums whitespace-nowrap">
+                      {brl(totals.custo_rastreamento)}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        )}
+      </div>
+
+      <p className="text-g-700 text-xs text-center">
+        Clique em qualquer linha para abrir a análise detalhada do veículo
       </p>
 
       {selectedPlaca && (

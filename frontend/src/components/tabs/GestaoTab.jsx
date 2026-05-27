@@ -89,14 +89,9 @@ export default function GestaoTab({ year }) {
   const sortAbertaBy = col => setSortAberta(s => s.col !== col ? { col, dir: 'asc' } : s.dir === 'asc' ? { col, dir: 'desc' } : { col: null, dir: 'asc' })
   const sortFinBy = col => setSortFin(s => s.col !== col ? { col, dir: 'asc' } : s.dir === 'asc' ? { col, dir: 'desc' } : { col: null, dir: 'asc' })
 
-  const abertasDoAno = useMemo(() => {
-    if (!year) return abertas
-    return abertas.filter(o => {
-      const dateStr = o.data_entrada || o.criado_em
-      if (!dateStr) return true
-      return new Date(dateStr).getFullYear() === parseInt(year)
-    })
-  }, [abertas, year])
+  // OS em andamento são exibidas sempre, independente do ano selecionado,
+  // pois são ordens ativas em curso. O filtro de ano só faz sentido para finalizadas.
+  const abertasDoAno = useMemo(() => abertas, [abertas])
 
   const emAndamento = abertasDoAno.filter(o => o.status_os === 'em_andamento')
   const aguardando = abertasDoAno.filter(o => o.status_os === 'aguardando_peca')

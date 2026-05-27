@@ -70,12 +70,26 @@ def get_monthly(year: int = Query(..., ge=2000, le=2100), empresa: str = Query(N
 
 @router.get("/api/vehicles")
 def get_vehicles(year: int = Query(..., ge=2000, le=2100), region: str = Query(None), empresa: str = Query(None)):
+    from sqlalchemy import text as _text
+
     df, _, _, fat, *_ = compute(year, empresa)
 
     # Optional region/contract filter
     if region and not fat.empty and "Contrato" in fat.columns:
         ids_region = set(fat[fat["Contrato"] == region]["IDVeiculo"].dropna().astype(int).tolist())
         df = df[df["IDVeiculo"].isin(ids_region)]
+
+    # Veículos com OS aberta e veículo parado (indisponivel=True)
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(_text(
+                "SELECT DISTINCT id_veiculo FROM ordens_servico "
+                "WHERE indisponivel = 1 AND status_os != 'finalizada' AND deletado_em IS NULL"
+            )).fetchall()
+            parados_ids = {r[0] for r in rows}
+    except Exception as _e:
+        logger.warning("get_vehicles: erro ao buscar OS paradas: %s", _e)
+        parados_ids = set()
 
     vehicles = []
     for rank, (_, row) in enumerate(df.sort_values("Margem", ascending=False).iterrows(), 1):
@@ -107,6 +121,7 @@ def get_vehicles(year: int = Query(..., ge=2000, le=2100), region: str = Query(N
             "custo_por_dia":      safe(row["CustoPorDia"]),
             "margem_por_dia":     safe(row["MargemPorDia"]),
             "roi":                safe(row.get("ROI", 0)),
+            "tem_os_parado":      int(row.get("IDVeiculo", 0)) in parados_ids,
         })
     return {"vehicles": vehicles}
 
