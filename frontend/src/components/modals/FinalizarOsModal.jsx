@@ -187,8 +187,9 @@ export default function FinalizarOsModal({ os, onClose, onSaved, editMode = fals
   const salvarNfEspecifica = async (ni) => {
     const nf = nfs[ni]
     const numValor = parseMoney(nf.valor_total_nf)
-    if (!nf.id_empresa || numValor <= 0 || nf.parcelas.length === 0) {
-      setError(`Preencha a Empresa e um Valor Total válido antes de salvar.`)
+    const parcelasValidas = nf.parcelas.filter(p => parseMoney(p.valor_parcela) > 0)
+    if (!nf.id_empresa || numValor <= 0 || parcelasValidas.length === 0) {
+      setError(`Preencha a Empresa, um Valor Total válido e ao menos uma parcela com valor antes de salvar.`)
       return
     }
     setSaving(true); setError(null)

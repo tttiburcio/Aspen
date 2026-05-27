@@ -50,7 +50,7 @@ def adicionar_nf(os_id: int, payload: schemas.NotaFiscalCreate, db: Session = De
         db.add(nf_item)
 
     for p in payload.parcelas:
-        parcela = models.ManutencaoParcela(nf_id=nf.id, fornecedor=nf.fornecedor, **p.model_dump())
+        parcela = models.ManutencaoParcela(nf_id=nf.id, fornecedor=nf.fornecedor, **p.model_dump(exclude={"nf_ordem"}))
         db.add(parcela)
 
     db.commit()
@@ -93,9 +93,9 @@ def sync_nfs(os_id: int, payload: list[schemas.NotaFiscalCreate], db: Session = 
         
         for p in nf_data.parcelas:
             db.add(models.ManutencaoParcela(
-                nf_id=nf.id, 
-                fornecedor=nf.fornecedor, 
-                **p.model_dump()
+                nf_id=nf.id,
+                fornecedor=nf.fornecedor,
+                **p.model_dump(exclude={"nf_ordem"}),
             ))
             
         nfs_criadas.append(nf)
@@ -186,7 +186,7 @@ def adicionar_parcela_nf(nf_id: int, payload: schemas.ParcelaCreate, db: Session
     nf = db.get(models.NotaFiscal, nf_id)
     if not nf or nf.deletado_em is not None:
         raise HTTPException(404, "NF não encontrada")
-    parcela = models.ManutencaoParcela(nf_id=nf_id, **payload.model_dump())
+    parcela = models.ManutencaoParcela(nf_id=nf_id, **payload.model_dump(exclude={"nf_ordem"}))
     db.add(parcela)
     db.commit()
     db.refresh(parcela)
