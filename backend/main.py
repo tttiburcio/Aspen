@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from config import CORS_ORIGINS, APP_TITLE, APP_VERSION
 from database import init_db
 from services.os_helpers import _enrich_km_from_mapws
@@ -21,6 +22,21 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title=APP_TITLE, version=APP_VERSION, lifespan=lifespan)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Captura exceções não tratadas e retorna 500 com JSON estruturado.
+    Como este handler roda DENTRO do app (abaixo do CORSMiddleware),
+    a resposta sempre terá os headers CORS — evitando o falso CORS error
+    que aparece no browser quando o ServerErrorMiddleware retorna 500 sem headers.
+    """
+    logger.exception("Erro não tratado em %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno do servidor. Tente novamente."},
+    )
 
 
 @app.get("/")
