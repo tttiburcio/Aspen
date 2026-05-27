@@ -892,9 +892,11 @@ function MultaDrawer({ multa, onClose, onSaved, onOpenPagar, onOpenIndicar, onOp
 }
 
 // ─── Modal: Selecionar tipo de pagamento ──────────────────────────────────────
-function SelecionarPagamentoModal({ debito, onClose, onSelect }) {
+function SelecionarPagamentoModal({ debito, onClose, onSelect, blockingIpva = [], blockingLicen = [] }) {
   const temIpva  = debito.status_ipva  !== 'Pago' && debito.valor_ipva  > 0
   const temLicen = debito.status_licenciamento !== 'Pago' && debito.valor_licenciamento > 0
+  const ipvaBlocked  = blockingIpva.length > 0
+  const licenBlocked = blockingLicen.length > 0
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -909,30 +911,56 @@ function SelecionarPagamentoModal({ debito, onClose, onSelect }) {
         <p className="text-g-500 text-sm">Selecione o débito que deseja quitar:</p>
         <div className="flex flex-col gap-2">
           {temIpva && (
-            <button onClick={() => onSelect('ipva')}
-              className="flex items-center justify-between px-4 py-3 rounded-xl border border-g-800 hover:border-g-600 hover:bg-g-850 transition-all group">
-              <div className="text-left">
-                <p className="text-g-300 font-semibold text-sm group-hover:text-g-200">IPVA {debito.exercicio}</p>
-                <p className="text-g-600 text-xs font-mono mt-0.5">
-                  {brl(debito.valor_ipva + (debito.encargo_ipva || 0))}
-                  {debito.encargo_ipva > 0 && <span className="text-slate-400"> · orig. {brl(debito.valor_ipva)}</span>}
+            <div>
+              <button
+                onClick={() => !ipvaBlocked && onSelect('ipva')}
+                disabled={ipvaBlocked}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all group
+                  ${ipvaBlocked
+                    ? 'border-g-800 opacity-50 cursor-not-allowed'
+                    : 'border-g-800 hover:border-g-600 hover:bg-g-850 cursor-pointer'}`}>
+                <div className="text-left">
+                  <p className="text-g-300 font-semibold text-sm">IPVA {debito.exercicio}</p>
+                  <p className="text-g-600 text-xs font-mono mt-0.5">
+                    {brl(debito.valor_ipva + (debito.encargo_ipva || 0))}
+                    {debito.encargo_ipva > 0 && <span className="text-slate-400"> · orig. {brl(debito.valor_ipva)}</span>}
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-g-600" />
+              </button>
+              {ipvaBlocked && (
+                <p className="mt-1.5 px-1 text-[11px] text-amber-600 flex items-start gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                  Regularize o IPVA de {blockingIpva.join(', ')} antes de pagar {debito.exercicio}.
                 </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-g-600 group-hover:text-g-400" />
-            </button>
+              )}
+            </div>
           )}
           {temLicen && (
-            <button onClick={() => onSelect('licenciamento')}
-              className="flex items-center justify-between px-4 py-3 rounded-xl border border-g-800 hover:border-g-600 hover:bg-g-850 transition-all group">
-              <div className="text-left">
-                <p className="text-g-300 font-semibold text-sm group-hover:text-g-200">Licenciamento {debito.exercicio}</p>
-                <p className="text-g-600 text-xs font-mono mt-0.5">
-                  {brl(debito.valor_licenciamento + (debito.encargo_licenciamento || 0))}
-                  {debito.encargo_licenciamento > 0 && <span className="text-slate-400"> · orig. {brl(debito.valor_licenciamento)}</span>}
+            <div>
+              <button
+                onClick={() => !licenBlocked && onSelect('licenciamento')}
+                disabled={licenBlocked}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all group
+                  ${licenBlocked
+                    ? 'border-g-800 opacity-50 cursor-not-allowed'
+                    : 'border-g-800 hover:border-g-600 hover:bg-g-850 cursor-pointer'}`}>
+                <div className="text-left">
+                  <p className="text-g-300 font-semibold text-sm">Licenciamento {debito.exercicio}</p>
+                  <p className="text-g-600 text-xs font-mono mt-0.5">
+                    {brl(debito.valor_licenciamento + (debito.encargo_licenciamento || 0))}
+                    {debito.encargo_licenciamento > 0 && <span className="text-slate-400"> · orig. {brl(debito.valor_licenciamento)}</span>}
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-g-600" />
+              </button>
+              {licenBlocked && (
+                <p className="mt-1.5 px-1 text-[11px] text-amber-600 flex items-start gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                  Regularize o Licenciamento de {blockingLicen.join(', ')} antes de pagar {debito.exercicio}.
                 </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-g-600 group-hover:text-g-400" />
-            </button>
+              )}
+            </div>
           )}
           {!temIpva && !temLicen && (
             <p className="text-center text-g-600 text-sm py-4">Todos os débitos já foram pagos.</p>
@@ -947,14 +975,14 @@ function SelecionarPagamentoModal({ debito, onClose, onSelect }) {
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 function KpiCard({ icon: Icon, label, value, sub, accent, warn }) {
   return (
-    <div className={`card p-4 flex items-center gap-3.5 ${warn ? 'border-l-[3px] border-l-red-400' : ''}`}>
-      <div className="p-2 rounded-xl bg-g-850 border border-g-800 shrink-0">
-        <Icon className="w-4 h-4" style={{ color: accent }} />
+    <div className={`card p-5 flex items-center gap-4 ${warn ? 'border-l-[3px] border-l-red-400' : ''}`}>
+      <div className="p-3 bg-g-850 border border-g-800 rounded-xl shrink-0">
+        <Icon className="w-5 h-5" style={{ color: accent }} />
       </div>
       <div className="min-w-0">
-        <p className="text-g-600 text-[10px] font-semibold uppercase tracking-wider truncate">{label}</p>
-        <p className="font-bold text-lg font-mono tabular-nums text-g-200 leading-tight truncate">{value}</p>
-        {sub && <p className="text-g-600 text-[10px] tabular-nums mt-0.5 truncate">{sub}</p>}
+        <p className="text-g-600 text-[11px] uppercase tracking-wider font-semibold truncate">{label}</p>
+        <p className="text-g-100 font-bold text-2xl font-mono tabular-nums truncate leading-tight">{value}</p>
+        {sub && <p className="text-g-500 text-xs tabular-nums truncate mt-0.5">{sub}</p>}
       </div>
     </div>
   )
@@ -976,7 +1004,7 @@ function SectionRow({ icon: Icon, label, count, colSpan }) {
 }
 
 // ─── Table Row: Débito Documental ─────────────────────────────────────────────
-function DebitRow({ d, onPagar, onEncargoIpva, onEncargoLicen }) {
+function DebitRow({ d, onPagar, onEncargoIpva, onEncargoLicen, blockingYears }) {
   const ipvaDays  = daysDiff(d.vencimento_ipva)
   const licenDays = daysDiff(d.vencimento_licenciamento)
   const isOverdue = (d.status_ipva !== 'Pago' && ipvaDays !== null && ipvaDays < 0)
@@ -1040,10 +1068,18 @@ function DebitRow({ d, onPagar, onEncargoIpva, onEncargoLicen }) {
       </td>
       <td className="td">
         {!tudoPago ? (
-          <button onClick={onPagar}
-            className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 transition-colors whitespace-nowrap">
-            Pagar
-          </button>
+          <div className="flex flex-col items-start gap-1">
+            <button onClick={onPagar}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 transition-colors whitespace-nowrap">
+              Pagar
+            </button>
+            {blockingYears && (blockingYears.ipva.length > 0 || blockingYears.licen.length > 0) && (
+              <span className="text-[9px] text-amber-600 flex items-center gap-0.5 leading-tight">
+                <AlertCircle className="w-2.5 h-2.5 shrink-0" />
+                Anos anteriores em aberto
+              </span>
+            )}
+          </div>
         ) : null}
       </td>
     </tr>
@@ -1051,11 +1087,11 @@ function DebitRow({ d, onPagar, onEncargoIpva, onEncargoLicen }) {
 }
 
 // ─── DebitsPage ───────────────────────────────────────────────────────────────
-export default function DebitsPage({ year }) {
+export default function DebitsPage({ year, initialTab }) {
   const { selectedCompany } = useCompanies()
   const empresa = selectedCompany?.id !== 'grupo' ? selectedCompany?.sigla : undefined
 
-  const [tab,      setTab]      = useState('documentais')
+  const [tab,      setTab]      = useState(initialTab || 'documentais')
   const [loading,  setLoading]  = useState(true)
   const [search,   setSearch]   = useState('')
 
@@ -1117,12 +1153,10 @@ export default function DebitsPage({ year }) {
   useEffect(() => { load() }, [load])
   useEffect(() => { dbListFrotaAll().then(d => setFrota(d || [])) }, [])
 
-  // Lazy-load all-year debitos when documentacao tab is first opened
+  // Carrega todos os exercícios para o módulo de documentação e regra de sequência
   useEffect(() => {
-    if (tab === 'documentacao' && allDebitos === null) {
-      getDebitos(empresa ? { empresa } : {}).then(d => setAllDebitos(d || []))
-    }
-  }, [tab, allDebitos, empresa])
+    getDebitos(empresa ? { empresa } : {}).then(d => setAllDebitos(d || []))
+  }, [empresa])
 
   // ─── Filtros documentais ───────────────────────────────────────────────────
   const sortedDebitos = useMemo(() => {
@@ -1342,6 +1376,30 @@ export default function DebitsPage({ year }) {
     return r
   }, [docCards, fDCrlv, fDAntig, fDMulta, fDRestr])
 
+  // ── Mapa de anos bloqueantes por veículo ────────────────────────────────────
+  // Regra: não se pode pagar licenciamento/IPVA do ano N enquanto
+  // existir débito do mesmo tipo em aberto em exercício anterior.
+  const blockingMap = useMemo(() => {
+    if (!allDebitos) return {}
+    const byVehicle = {}
+    for (const d of allDebitos) {
+      if (!byVehicle[d.id_veiculo]) byVehicle[d.id_veiculo] = []
+      byVehicle[d.id_veiculo].push(d)
+    }
+    return byVehicle
+  }, [allDebitos])
+
+  const getBlockingYears = useCallback((debito) => {
+    const records = blockingMap[debito.id_veiculo] || []
+    const ipva  = records
+      .filter(r => r.exercicio < debito.exercicio && r.status_ipva !== 'Pago' && (r.valor_ipva || 0) > 0)
+      .map(r => r.exercicio).sort()
+    const licen = records
+      .filter(r => r.exercicio < debito.exercicio && r.status_licenciamento !== 'Pago' && (r.valor_licenciamento || 0) > 0)
+      .map(r => r.exercicio).sort()
+    return { ipva, licen }
+  }, [blockingMap])
+
   // Next action for multa row
   const multaNextAction = (m) => {
     if (['Pago', 'Cancelado'].includes(m.status_multa)) return null
@@ -1507,7 +1565,8 @@ export default function DebitsPage({ year }) {
                         <DebitRow key={d.id} d={d}
                           onPagar={() => setModalSelecionarPgto(d)}
                           onEncargoIpva={() => setModalEncargoDoc({ debito: d, tipo: 'ipva' })}
-                          onEncargoLicen={() => setModalEncargoDoc({ debito: d, tipo: 'licenciamento' })} />
+                          onEncargoLicen={() => setModalEncargoDoc({ debito: d, tipo: 'licenciamento' })}
+                          blockingYears={allDebitos ? getBlockingYears(d) : null} />
                       ))}
                     </>
                   )}
@@ -1518,7 +1577,8 @@ export default function DebitsPage({ year }) {
                         <DebitRow key={d.id} d={d}
                           onPagar={() => setModalSelecionarPgto(d)}
                           onEncargoIpva={() => setModalEncargoDoc({ debito: d, tipo: 'ipva' })}
-                          onEncargoLicen={() => setModalEncargoDoc({ debito: d, tipo: 'licenciamento' })} />
+                          onEncargoLicen={() => setModalEncargoDoc({ debito: d, tipo: 'licenciamento' })}
+                          blockingYears={allDebitos ? getBlockingYears(d) : null} />
                       ))}
                     </>
                   )}
@@ -1750,19 +1810,33 @@ export default function DebitsPage({ year }) {
                     {/* ── Detalhamento financeiro ── */}
                     <div className="px-4 py-3 flex flex-col divide-y divide-gray-50">
                       {c.isPastView ? (
-                        // Modo histórico: apenas o ano selecionado
+                        // Modo histórico: apenas o ano selecionado — com ícones de pago/pendente
                         c.allYearData.filter(yr => yr.exercicio === c.selectedYear).flatMap(yr => {
                           const rows = []
                           if (yr.ipvaValor > 0) rows.push(
                             <div key={`ipva-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
-                              <span className="text-sm text-gray-500">IPVA ({yr.exercicio})</span>
-                              <span className="text-sm font-semibold text-gray-700 tabular-nums font-mono">{brl(yr.ipvaValor)}</span>
+                              <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                                {yr.ipvaStatus === 'pago'
+                                  ? <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" />
+                                  : yr.ipvaStatus === 'a_vencer'
+                                    ? <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                                    : <X className="w-3 h-3 text-red-500 shrink-0" />}
+                                IPVA ({yr.exercicio})
+                              </span>
+                              <span className={`text-sm font-semibold tabular-nums font-mono ${yr.ipvaPago ? 'text-gray-400' : 'text-gray-700'}`}>{brl(yr.ipvaValor)}</span>
                             </div>
                           )
                           if (yr.licenValor > 0) rows.push(
                             <div key={`licen-${yr.exercicio}`} className="flex justify-between items-center py-1.5">
-                              <span className="text-sm text-gray-500">Licenciamento ({yr.exercicio})</span>
-                              <span className="text-sm font-semibold text-gray-700 tabular-nums font-mono">{brl(yr.licenValor)}</span>
+                              <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                                {yr.licenStatus === 'pago'
+                                  ? <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" />
+                                  : yr.licenStatus === 'a_vencer'
+                                    ? <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                                    : <X className="w-3 h-3 text-red-500 shrink-0" />}
+                                Licenciamento ({yr.exercicio})
+                              </span>
+                              <span className={`text-sm font-semibold tabular-nums font-mono ${yr.licenPago ? 'text-gray-400' : 'text-gray-700'}`}>{brl(yr.licenValor)}</span>
                             </div>
                           )
                           return rows
@@ -1905,12 +1979,17 @@ export default function DebitsPage({ year }) {
       )}
 
       {/* ── Modais ── */}
-      {modalSelecionarPgto && (
-        <SelecionarPagamentoModal
-          debito={modalSelecionarPgto}
-          onClose={() => setModalSelecionarPgto(null)}
-          onSelect={tipo => { setModalSelecionarPgto(null); setModalPagarDeb({ debito: modalSelecionarPgto, tipo }) }} />
-      )}
+      {modalSelecionarPgto && (() => {
+        const blocking = getBlockingYears(modalSelecionarPgto)
+        return (
+          <SelecionarPagamentoModal
+            debito={modalSelecionarPgto}
+            blockingIpva={blocking.ipva}
+            blockingLicen={blocking.licen}
+            onClose={() => setModalSelecionarPgto(null)}
+            onSelect={tipo => { setModalSelecionarPgto(null); setModalPagarDeb({ debito: modalSelecionarPgto, tipo }) }} />
+        )
+      })()}
       {modalEncargoDoc && (
         <AtualizarEncargoModal debito={modalEncargoDoc.debito} tipo={modalEncargoDoc.tipo}
           onClose={() => setModalEncargoDoc(null)} onSaved={load} />
