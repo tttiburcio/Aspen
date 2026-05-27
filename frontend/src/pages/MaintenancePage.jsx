@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Wrench, DollarSign } from 'lucide-react'
 import GestaoTab from '../components/tabs/GestaoTab'
 import FinanceiroTab from '../components/tabs/FinanceiroTab'
@@ -7,9 +7,19 @@ export default function MaintenancePage({
   year,
   vehicles = [],
   finAlertDismissed,
-  setFinAlertDismissed
+  setFinAlertDismissed,
+  activeTab,
+  onTabChange,
 }) {
-  const [tab, setTab] = useState('gestao')
+  const [tab, setTabLocal] = useState(activeTab || 'gestao')
+
+  // Sincroniza quando pai muda via dropdown de navegação
+  const setTab = (t) => { setTabLocal(t); onTabChange?.(t) }
+
+  // Garante que o tab correto abre ao navegar via dropdown
+  useEffect(() => {
+    if (activeTab && activeTab !== tab) setTabLocal(activeTab)
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col gap-6">
