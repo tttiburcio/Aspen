@@ -1,5 +1,6 @@
 ﻿import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import html2pdf from 'html2pdf.js'
+import toast from 'react-hot-toast'
 import { dbListParcelas, dbListOs, dbAtualizarParcela, dbCriarParcelaNf } from '../../utils/api'
 import { brl, dateBR, shortenProviderName } from '../../utils/format'
 import { statusFinanceiro } from '../../utils/financialCalcs'
@@ -34,6 +35,7 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
   const [filterDataAte, setFilterDataAte] = useState('')
   const [sort, setSort] = useState({ col: 'data_vencimento', dir: 'asc' })
   const [expandedNfs, setExpandedNfs] = useState(new Set())
+  const [saving, setSaving] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [showReportDropdown, setShowReportDropdown] = useState(false)
   const [showInstallmentsInReport, setShowInstallmentsInReport] = useState(true)
@@ -306,31 +308,84 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
     ? (sort.dir === 'asc' ? <ChevronUp className="w-3 h-3 inline ml-0.5" /> : <ChevronDown className="w-3 h-3 inline ml-0.5" />)
     : <ChevronDown className="w-3 h-3 inline ml-0.5 opacity-20" />
 
+  // Cria parcela via NF (para NFs sintéticas, sem parcelas reais ainda)
+  const _criarParcelaPaga = (p) => dbCriarParcelaNf(p.nf_id, {
+    valor_parcela:    p.valor_parcela,
+    status_pagamento: 'Pago',
+    nota:             p.nota,
+    fornecedor:       p.fornecedor,
+    valor_item_total: p.valor_item_total,
+    data_vencimento:  p.data_vencimento,
+  })
+
+  // Marca uma parcela real como paga (view de parcelas)
   const handleMarcarPago = async (p) => {
-    await dbAtualizarParcela(p.id, { status_pagamento: 'Pago' })
-    load()
+    setSaving(true)
+    try {
+      await dbAtualizarParcela(p.id, { status_pagamento: 'Pago' })
+      toast.success('Parcela marcada como paga')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erro ao marcar parcela como paga')
+    } finally {
+      setSaving(false)
+      load()
+    }
   }
 
-  const handleMarcarNfPaga = async (parcelas) => {
-    const pendentes = parcelas.filter(p => p._status !== 'pago')
-    await Promise.all(pendentes.map(p =>
-      p._isSintetica
-        ? dbCriarParcelaNf(p.nf_id, { valor_parcela: p.valor_parcela, status_pagamento: 'Pago', nota: p.nota, fornecedor: p.fornecedor, valor_item_total: p.valor_item_total, data_vencimento: p.data_vencimento })
-        : dbAtualizarParcela(p.id, { status_pagamento: 'Pago' })
-    ))
-    load()
+  // Marca TODAS as parcelas pendentes de um grupo de NF como pagas.
+  // Usa `nfKey` para buscar no `enriched` completo — ignora filtros ativos
+  // de data ou categoria, garantindo que parcelas fora do período visível
+  // também sejam marcadas corretamente.
+  const handleMarcarNfPaga = async (nfKey) => {
+    const todasParcelasNf = enriched.filter(p =>
+      `${p.nota || 'S/N'}|${p.fornecedor || 'Desconhecido'}`.toLowerCase() === nfKey
+    )
+    const pendentes = todasParcelasNf.filter(p => p._status !== 'pago')
+    if (pendentes.length === 0) return
+    setSaving(true)
+    try {
+      await Promise.all(pendentes.map(p =>
+        p._isSintetica ? _criarParcelaPaga(p) : dbAtualizarParcela(p.id, { status_pagamento: 'Pago' })
+      ))
+      toast.success(
+        pendentes.length === 1
+          ? 'Parcela marcada como paga'
+          : `${pendentes.length} parcelas marcadas como pagas`
+      )
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erro ao marcar NF como paga')
+    } finally {
+      setSaving(false)
+      load()
+    }
   }
 
+  // Marca uma parcela sintética (NF sem parcelas reais) como paga (view de parcelas)
   const handleMarcarPagoSintetica = async (p) => {
-    await dbCriarParcelaNf(p.nf_id, {
-      valor_parcela: p.valor_parcela,
-      status_pagamento: 'Pago',
-      nota: p.nota,
-      fornecedor: p.fornecedor,
-      valor_item_total: p.valor_item_total,
-      data_vencimento: p.data_vencimento,
-    })
-    load()
+    setSaving(true)
+    try {
+      await _criarParcelaPaga(p)
+      toast.success('Parcela marcada como paga')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erro ao registrar pagamento')
+    } finally {
+      setSaving(false)
+      load()
+    }
+  }
+
+  // Marca uma parcela real individualmente (botão na linha expandida da nota)
+  const handleMarcarParcela = async (p) => {
+    setSaving(true)
+    try {
+      await dbAtualizarParcela(p.id, { status_pagamento: 'Pago' })
+      toast.success('Parcela marcada como paga')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erro ao marcar parcela como paga')
+    } finally {
+      setSaving(false)
+      load()
+    }
   }
 
   const handlePrint = (withInstallments = true) => {
@@ -613,10 +668,11 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                           </span>
                           {!g.allPago && (
                             <button
-                              onClick={e => { e.stopPropagation(); handleMarcarNfPaga(g.parcelas) }}
-                              className="text-[10px] font-semibold px-2.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 transition-colors whitespace-nowrap"
+                              onClick={e => { e.stopPropagation(); handleMarcarNfPaga(g.nfKey) }}
+                              disabled={saving}
+                              className="text-[10px] font-semibold px-2.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 disabled:opacity-40 transition-colors whitespace-nowrap"
                             >
-                              Marcar pago
+                              {saving ? '...' : 'Marcar pago'}
                             </button>
                           )}
                         </div>
@@ -677,15 +733,32 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                                   <td className="td td-right !pr-1.5" onClick={e => e.stopPropagation()}>
                                     {p._isSintetica ? (
                                       <div className="flex items-center justify-end gap-1">
-                                        <span className="text-[10px] text-g-700 italic px-1">via NF</span>
+                                        <button
+                                          onClick={() => handleMarcarPagoSintetica(p)}
+                                          disabled={saving}
+                                          className="px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200 rounded bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 transition-colors"
+                                          title="Registrar como pago"
+                                        >
+                                          {saving ? '...' : 'Pago'}
+                                        </button>
                                       </div>
                                     ) : (
                                       <div className="flex items-center justify-end gap-1">
                                         {p.status_pagamento !== 'Pago' && (
-                                          <button onClick={() => setModalProrrogar(p)}
-                                            className="p-1 rounded bg-g-850 border border-g-800 text-g-600 hover:text-purple-400 transition-colors" title="Prorrogar">
-                                            <CalendarClock className="w-3 h-3" />
-                                          </button>
+                                          <>
+                                            <button onClick={() => setModalProrrogar(p)}
+                                              className="p-1 rounded bg-g-850 border border-g-800 text-g-600 hover:text-purple-400 transition-colors" title="Prorrogar">
+                                              <CalendarClock className="w-3 h-3" />
+                                            </button>
+                                            <button
+                                              onClick={() => handleMarcarParcela(p)}
+                                              disabled={saving}
+                                              className="px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200 rounded bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 transition-colors"
+                                              title="Marcar como pago"
+                                            >
+                                              {saving ? '...' : 'Pago'}
+                                            </button>
+                                          </>
                                         )}
                                       </div>
                                     )}
@@ -804,9 +877,14 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                         <td className="td td-right !pr-1.5" onClick={e => e.stopPropagation()}>
                           {p._isSintetica ? (
                             <div className="flex items-center justify-end gap-1">
-                              <span className="text-[10px] text-g-700 italic px-1">via NF</span>
-                              <button onClick={() => handleMarcarPagoSintetica(p)} title="Registrar como pago"
-                                className="px-2 py-1 text-xs text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors">Pago</button>
+                              <button
+                                onClick={() => handleMarcarPagoSintetica(p)}
+                                disabled={saving}
+                                title="Registrar como pago"
+                                className="px-2 py-1 text-xs text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-40 transition-colors"
+                              >
+                                {saving ? '...' : 'Pago'}
+                              </button>
                             </div>
                           ) : (
                             <div className="flex items-center justify-end gap-1">
@@ -817,9 +895,13 @@ export default function FinanceiroTab({ year, alertDismissed, onAlertDismiss }) 
                                 </button>
                               )}
                               {p._status !== 'pago' && (
-                                <button onClick={() => handleMarcarPago(p)} title="Marcar como pago"
-                                  className="px-2 py-1 text-xs text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors">
-                                  Pago
+                                <button
+                                  onClick={() => handleMarcarPago(p)}
+                                  disabled={saving}
+                                  title="Marcar como pago"
+                                  className="px-2 py-1 text-xs text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 disabled:opacity-40 transition-colors"
+                                >
+                                  {saving ? '...' : 'Pago'}
                                 </button>
                               )}
                             </div>
