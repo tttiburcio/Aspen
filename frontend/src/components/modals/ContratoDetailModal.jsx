@@ -41,12 +41,12 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
   useEffect(() => {
     setLoading(true)
     if (tab === 'Veículos') {
-      Promise.all([
+      Promise.allSettled([
         getContratoVeiculos(contrato.id),
         getContratoMetricas(contrato.id),
-      ]).then(([v, m]) => {
-        setVeiculos(v || [])
-        setMetricas(m || null)
+      ]).then(([rv, rm]) => {
+        setVeiculos(rv.status === 'fulfilled' ? (rv.value || []) : [])
+        setMetricas(rm.status === 'fulfilled' ? (rm.value || null) : null)
       }).finally(() => setLoading(false))
     } else {
       getContratoFaturas(contrato.id)
@@ -76,7 +76,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="text-g-600 text-xs font-mono font-semibold">NºCT {contrato.id}</span>
+                  <span className="text-g-600 text-xs font-semibold">NºCT {contrato.id}</span>
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-g-800 text-g-300">
                     {contrato.empresa_sigla}
                   </span>
@@ -121,7 +121,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
             {(contrato.data_inicio || contrato.data_fim) && (
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-g-600" />
-                <span className="font-mono">
+                <span className="">
                   {dateBR(contrato.data_inicio) || '—'} → {dateBR(contrato.data_fim) || 'Aberto'}
                 </span>
               </div>
@@ -130,7 +130,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
               <DaysChip days={contrato.dias_restantes} />
             )}
             {contrato.data_encerramento && contrato.status !== 'Ativo' && (
-              <span className="text-g-600 text-xs font-mono">
+              <span className="text-g-600 text-xs">
                 Encerrado em: {dateBR(contrato.data_encerramento)}
               </span>
             )}
@@ -175,11 +175,11 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                   {[
                     { label: 'Total Mensal Contratado', val: metricas.valor_mensal_total, color: 'text-g-100' },
                     { label: 'Total Medido (período)', val: metricas.total_medido,        color: 'text-emerald-700' },
-                    { label: 'Total Pendente',          val: metricas.total_pendente,     color: 'text-amber-600' },
+                    { label: 'Total Pendente',          val: metricas.total_pendente,     color: 'text-purple-500' },
                   ].map(({ label, val, color }) => (
                     <div key={label} className="text-center">
                       <p className="text-g-600 text-[10px] uppercase tracking-wider mb-1">{label}</p>
-                      <p className={`font-mono font-bold text-base ${color} tabular-nums`}>{brl(val)}</p>
+                      <p className={`font-bold text-base ${color} tabular-nums`}>{brl(val)}</p>
                     </div>
                   ))}
                 </div>
@@ -195,39 +195,39 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                       <tr>
                         <th className="px-4 py-2.5 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Placa</th>
                         <th className="px-4 py-2.5 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Modelo</th>
-                        <th className="px-4 py-2.5 text-right text-g-500 text-[10px] uppercase tracking-wider font-semibold">Valor Mensal</th>
-                        <th className="px-4 py-2.5 text-right text-g-500 text-[10px] uppercase tracking-wider font-semibold">Diária</th>
+                        <th className="px-4 py-2.5 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Valor Mensal</th>
+                        <th className="px-4 py-2.5 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Diária</th>
                         <th className="px-4 py-2.5 text-center text-g-500 text-[10px] uppercase tracking-wider font-semibold">Medições (consumidas/total)</th>
-                        <th className="px-4 py-2.5 text-right text-g-500 text-[10px] uppercase tracking-wider font-semibold">Total Medido</th>
-                        <th className="px-4 py-2.5 text-right text-g-500 text-[10px] uppercase tracking-wider font-semibold">Pendente</th>
+                        <th className="px-4 py-2.5 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Total Medido</th>
+                        <th className="px-4 py-2.5 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Pendente</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(metricas?.veiculos || veiculos).map(v => (
                         <tr key={v.id_veiculo} className="border-b border-g-800/60 hover:bg-g-900/40 transition-colors">
                           <td className="px-4 py-3">
-                            <span className="font-mono font-bold text-g-200">{v.placa}</span>
+                            <span className="font-bold text-g-200">{v.placa}</span>
                           </td>
                           <td className="px-4 py-3 text-g-500">{v.modelo || '—'}</td>
-                          <td className="px-4 py-3 text-right font-mono text-g-300 tabular-nums">
+                          <td className="px-4 py-3 text-left text-g-200 tabular-nums">
                             {v.valor_mensal ? brl(v.valor_mensal) : <span className="text-g-700">—</span>}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-g-500 tabular-nums text-[10px]">
+                          <td className="px-4 py-3 text-left text-g-500 tabular-nums text-[12px]">
                             {v.valor_diaria ? brl(v.valor_diaria) : '—'}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {v.medicoes_consumidas != null ? (
-                              <span className="inline-flex items-center gap-1 text-[10px]">
-                                <span className="text-emerald-700 font-bold font-mono">{v.medicoes_consumidas}</span>
-                                <span className="text-g-700">/</span>
-                                <span className="text-g-400 font-mono font-semibold">{v.medicoes_total ?? (v.medicoes_consumidas + v.medicoes_restantes)}</span>
+                              <span className="inline-flex items-center gap-1 text-[12px]">
+                                <span className="text-emerald-700 font-bold">{v.medicoes_consumidas}</span>
+                                <span className="text-g-500">/</span>
+                                <span className="text-g-200 font-semibold">{v.medicoes_total ?? (v.medicoes_consumidas + v.medicoes_restantes)}</span>
                               </span>
                             ) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-emerald-700 tabular-nums">
+                          <td className="px-4 py-3 text-left text-emerald-700 tabular-nums">
                             {v.total_medido != null ? brl(v.total_medido) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-amber-600 tabular-nums">
+                          <td className="px-4 py-3 text-left text-purple-600 tabular-nums">
                             {v.total_pendente != null ? brl(v.total_pendente) : '—'}
                           </td>
                         </tr>
@@ -255,7 +255,7 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                         const color = pct >= 80 ? 'text-red-400' : pct >= 50 ? 'text-amber-600' : 'text-emerald-700'
                         return (
                           <>
-                            <span className={`font-mono font-bold text-sm ${color}`}>{consumidas}/{total}</span>
+                            <span className={`font-bold text-sm ${color}`}>{consumidas}/{total}</span>
                             <span className="text-g-600 text-[10px] ml-2">({pct}%)</span>
                           </>
                         )
@@ -291,9 +291,9 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                   <thead className="bg-g-850 border-b border-g-800">
                     <tr>
                       <th className="px-4 py-3 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Mês</th>
-                      <th className="px-4 py-3 text-right text-g-500 text-[10px] uppercase tracking-wider font-semibold">Locações</th>
-                      <th className="px-4 py-3 text-right text-g-500 text-[10px] uppercase tracking-wider font-semibold">Imposto</th>
-                      <th className="px-4 py-3 text-right text-g-500 text-[10px] uppercase tracking-wider font-semibold">Líquido</th>
+                      <th className="px-4 py-3 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Locações</th>
+                      <th className="px-4 py-3 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Imposto</th>
+                      <th className="px-4 py-3 text-left text-g-500 text-[10px] uppercase tracking-wider font-semibold">Líquido</th>
                       <th className="px-4 py-3 text-center text-g-500 text-[10px] uppercase tracking-wider font-semibold">Recebimento</th>
                       <th className="px-4 py-3 text-center text-g-500 text-[10px] uppercase tracking-wider font-semibold">Imposto</th>
                     </tr>
@@ -303,20 +303,20 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                       <tr key={f.id} className="border-b border-g-800/60 hover:bg-g-900/60 transition-colors">
                         <td className="px-4 py-3">
                           <p className="text-g-300 font-semibold">{f.emissao_display}</p>
-                          <p className="text-g-700 text-[10px] font-mono">{dateBR(f.vencimento)}</p>
+                          <p className="text-g-700 text-[10px]">{dateBR(f.vencimento)}</p>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-g-200 font-semibold tabular-nums">
+                        <td className="px-4 py-3 text-left text-g-100 tabular-nums">
                           {brl(f.valor_locacoes)}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-amber-600 tabular-nums">{brl(f.valor_imposto)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-indigo-400 tabular-nums">{brl(f.valor_liquido)}</td>
+                        <td className="px-4 py-3 text-left text-amber-600 tabular-nums">{brl(f.valor_imposto)}</td>
+                        <td className="px-4 py-3 text-left text-emerald-700 tabular-nums">{brl(f.valor_liquido)}</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`font-semibold ${REC_CLS[f.status_recebimento] || 'text-g-500'}`}>
                             {f.status_recebimento}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`font-semibold ${f.status_imposto === 'Pago' ? 'text-emerald-700' : 'text-amber-600'}`}>
+                          <span className={`font-semibold ${f.status_imposto === 'Pago' ? 'text-emerald-700' : 'text-g-200'}`}>
                             {f.status_imposto}
                           </span>
                         </td>
@@ -326,9 +326,9 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                   <tfoot className="bg-g-850 border-t-2 border-g-700">
                     <tr>
                       <td className="px-4 py-3 text-g-500 font-semibold">{faturas.length} fatura{faturas.length !== 1 ? 's' : ''}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-g-100 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_locacoes, 0))}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-amber-600 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_imposto, 0))}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-indigo-400 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_liquido, 0))}</td>
+                      <td className="px-4 py-3 text-left font-mono font-bold text-g-100 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_locacoes, 0))}</td>
+                      <td className="px-4 py-3 text-left font-mono font-bold text-amber-600 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_imposto, 0))}</td>
+                      <td className="px-4 py-3 text-left font-mono font-bold text-emerald-700 tabular-nums">{brl(faturas.reduce((s, f) => s + f.valor_liquido, 0))}</td>
                       <td colSpan={2} />
                     </tr>
                   </tfoot>

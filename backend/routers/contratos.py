@@ -284,15 +284,19 @@ def metricas_veiculos_contrato(contrato_id: int, db: Session = Depends(get_db)):
     fim_str    = str(contrato.data_fim)    if contrato.data_fim    else "9999-12-31"
 
     # Single bulk query instead of 1 query per vehicle
-    fat_rows = db.execute(
-        text("""
-            SELECT id_veiculo, COUNT(*) AS cnt, COALESCE(SUM(COALESCE(medicao,0)),0) AS total
-            FROM fat_unitario
-            WHERE id_veiculo IN :ids AND mes >= :ini AND mes <= :fim
-            GROUP BY id_veiculo
-        """),
-        {"ids": tuple(ids) if ids else (-1,), "ini": inicio_str, "fim": fim_str},
-    ).fetchall()
+    if ids:
+        placeholders = ",".join(str(i) for i in ids)
+        fat_rows = db.execute(
+            text(f"""
+                SELECT id_veiculo, COUNT(*) AS cnt, COALESCE(SUM(COALESCE(medicao,0)),0) AS total
+                FROM fat_unitario
+                WHERE id_veiculo IN ({placeholders}) AND mes >= :ini AND mes <= :fim
+                GROUP BY id_veiculo
+            """),
+            {"ini": inicio_str, "fim": fim_str},
+        ).fetchall()
+    else:
+        fat_rows = []
     fat_map = {row[0]: (int(row[1]), float(row[2])) for row in fat_rows}
 
     veiculos_data = []
