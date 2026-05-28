@@ -9,6 +9,8 @@ import toast from 'react-hot-toast'
 import {
   getContratos,
   getContratoVeiculos,
+  getContratoMetricas,
+  checkPeriodoFatura,
   getFaturamentoPrefill,
   getProximoNumeroFatura,
   criarFatura,
@@ -108,6 +110,15 @@ export default function FaturaFormModal({ onClose, onSaved }) {
   const [formaPgto,     setFormaPgto]     = useState('Boleto')
   const [numeroFatura,  setNumeroFatura]  = useState('')
 
+  // ── Encargos de boleto ──
+  const [multaPct,      setMultaPct]      = useState('')
+  const [jurosPct,      setJurosPct]      = useState('')
+  const [diasProtesto,  setDiasProtesto]  = useState('')
+
+  // ── Validação de período ──
+  const [periodoCheck,      setPeriodoCheck]      = useState(null)   // { bloqueado, por_veiculo, faturas_ids }
+  const [periodoCheckLoading, setPeriodoCheckLoading] = useState(false)
+
   // ── Step 3: Detalhamento por veículo ──
   const [veiculoRows,     setVeiculoRows]     = useState([])   // [{id_veiculo, placa, modelo, valor_diaria, qtd_dias, subtotal}]
   const [prefillLoading,  setPrefillLoading]  = useState(false)
@@ -139,10 +150,22 @@ export default function FaturaFormModal({ onClose, onSaved }) {
       .finally(() => setLoadingCt(false))
   }, [incluirInativos, empresaFiltro])
 
-  // ── Load veículos quando contrato muda ──
+  // ── Métricas de medição por contrato ──
+  const [metricas, setMetricas] = useState(null)
+
+  // ── Load veículos + métricas quando contrato muda ──
   useEffect(() => {
-    if (!contrato) { setVeiculos([]); return }
+    if (!contrato) { setVeiculos([]); setMetricas(null); return }
     getContratoVeiculos(contrato.id).then(d => setVeiculos(d || []))
+    getContratoMetricas(contrato.id).then(d => setMetricas(d || null)).catch(() => setMetricas(null))
+  }, [contrato])
+
+  // ── Pré-preenche encargos de boleto quando contrato muda ──
+  useEffect(() => {
+    if (!contrato) return
+    setMultaPct(contrato.multa_pct != null ? String(contrato.multa_pct) : '')
+    setJurosPct(contrato.juros_pct != null ? String(contrato.juros_pct) : '')
+    setDiasProtesto(contrato.dias_protesto != null ? String(contrato.dias_protesto) : '')
   }, [contrato])
 
   // ── Auto-fill número de fatura quando contrato muda ──
@@ -155,6 +178,17 @@ export default function FaturaFormModal({ onClose, onSaved }) {
   useEffect(() => {
     setDataEmissao(mesParaDate(anoSel, mesSel))
   }, [anoSel, mesSel])
+
+  // ── Valida período já faturado ao selecionar contrato ou mudar mês/ano ──
+  useEffect(() => {
+    if (!contrato) { setPeriodoCheck(null); return }
+    const mes = `${anoSel}-${String(mesSel).padStart(2, '0')}`
+    setPeriodoCheckLoading(true)
+    checkPeriodoFatura(contrato.id, mes)
+      .then(d => setPeriodoCheck(d || null))
+      .catch(() => setPeriodoCheck(null))
+      .finally(() => setPeriodoCheckLoading(false))
+  }, [contrato, anoSel, mesSel, step])
 
   // ── Atualiza vencimento quando emissão muda ──
   useEffect(() => {
@@ -169,24 +203,38 @@ export default function FaturaFormModal({ onClose, onSaved }) {
     setPrefillDone(false)
     getFaturamentoPrefill(contrato.id, mes)
       .then(d => {
-        const rows = (d?.por_veiculo || []).map(v => ({
-          id_veiculo:  v.id_veiculo,
-          placa:       v.placa  || '—',
-          modelo:      v.modelo || '—',
-          valor_diaria: v.valor_diaria || 0,
-          qtd_dias:    30,
-          subtotal:    roundTo((v.valor_diaria || 0) * 30),
-        }))
-        // Se não há dados de fat_unitario, cria linhas zeradas para os veículos do contrato
-        if (rows.length === 0 && veiculos.length > 0) {
-          veiculos.forEach(v => rows.push({
+        // Mapeia dias restantes por veículo (quando período parcialmente faturado)
+        const diasRestantesMap = Object.fromEntries(
+          (periodoCheck?.por_veiculo || []).map(v => [v.id_veiculo, v.dias_restantes])
+        )
+        const temParcial = (periodoCheck?.por_veiculo || []).some(v => v.trabalhado > 0)
+
+        const rows = (d?.por_veiculo || []).map(v => {
+          const diasBase = temParcial
+            ? (diasRestantesMap[v.id_veiculo] ?? 30)
+            : 30
+          return {
             id_veiculo:   v.id_veiculo,
             placa:        v.placa  || '—',
             modelo:       v.modelo || '—',
-            valor_diaria: 0,
-            qtd_dias:     30,
-            subtotal:     0,
-          }))
+            valor_diaria: v.valor_diaria || 0,
+            qtd_dias:     diasBase,
+            subtotal:     roundTo((v.valor_diaria || 0) * diasBase),
+          }
+        })
+        // Se não há dados de fat_unitario, cria linhas zeradas para os veículos do contrato
+        if (rows.length === 0 && veiculos.length > 0) {
+          veiculos.forEach(v => {
+            const diasBase = temParcial ? (diasRestantesMap[v.id_veiculo] ?? 30) : 30
+            rows.push({
+              id_veiculo:   v.id_veiculo,
+              placa:        v.placa  || '—',
+              modelo:       v.modelo || '—',
+              valor_diaria: 0,
+              qtd_dias:     diasBase,
+              subtotal:     0,
+            })
+          })
         }
         setVeiculoRows(rows)
         if (d?.valor_locacoes > 0) setPrefillDone(true)
@@ -194,7 +242,7 @@ export default function FaturaFormModal({ onClose, onSaved }) {
       .catch(() => {})
       .finally(() => setPrefillLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, contrato, anoSel, mesSel])
+  }, [step, contrato, anoSel, mesSel, periodoCheck])
 
   // ── Handlers de veículo ──
   const updateRow = (idx, field, raw) => {
@@ -239,6 +287,11 @@ export default function FaturaFormModal({ onClose, onSaved }) {
         status_imposto:     statusImp,
         forma_pagamento:    formaPgto || null,
         observacoes:        observacoes || null,
+        ...(formaPgto === 'Boleto' ? {
+          multa_pct:     multaPct     ? parseFloat(multaPct)     : null,
+          juros_pct:     jurosPct     ? parseFloat(jurosPct)     : null,
+          dias_protesto: diasProtesto ? parseInt(diasProtesto)   : null,
+        } : {}),
         por_veiculo:        veiculoRows
           .filter(r => r.subtotal > 0)
           .map(r => ({ id_veiculo: r.id_veiculo, subtotal: r.subtotal, qtd_dias: r.qtd_dias || 30 })),
@@ -255,7 +308,7 @@ export default function FaturaFormModal({ onClose, onSaved }) {
 
   const canAdvance = () => {
     if (step === 1) return !!contrato
-    if (step === 2) return !!dataEmissao && !!vencimento
+    if (step === 2) return !!dataEmissao && !!vencimento && !periodoCheck?.bloqueado
     return true
   }
 
@@ -370,6 +423,50 @@ export default function FaturaFormModal({ onClose, onSaved }) {
                         )}
                       </div>
 
+                      {/* Progresso de medições */}
+                      {metricas && (() => {
+                        const consumidas = metricas.veiculos?.length
+                          ? Math.max(...metricas.veiculos.map(v => v.medicoes_consumidas ?? 0))
+                          : 0
+                        const total = metricas.medicoes_total || 0
+                        const proxima = consumidas + 1
+                        const isLast = total > 0 && proxima === total
+                        const isOver = total > 0 && proxima > total
+                        const pct = total > 0 ? Math.min(100, Math.round((consumidas / total) * 100)) : 0
+                        const barColor = isOver ? 'bg-red-500' : isLast ? 'bg-amber-500' : pct >= 60 ? 'bg-amber-400' : 'bg-emerald-500'
+                        return (
+                          <div className={`rounded-lg border px-4 py-3 flex flex-col gap-2 ${
+                            isOver ? 'bg-red-500/8 border-red-500/25' :
+                            isLast ? 'bg-amber-500/8 border-amber-500/25' :
+                            'bg-g-900 border-g-800'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-g-500 text-[10px] uppercase tracking-wider font-semibold">Medição do Contrato</span>
+                              <span className={`text-xs font-bold tabular-nums ${isOver ? 'text-red-400' : isLast ? 'text-amber-500' : 'text-g-300'}`}>
+                                {isOver
+                                  ? `Excedido · ${consumidas}/${total}`
+                                  : `${proxima}ª de ${total}`}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-g-800 overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${isOver ? 100 : pct}%` }} />
+                            </div>
+                            {isOver && (
+                              <p className="text-red-400 text-[11px] font-semibold flex items-center gap-1">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                Contrato esgotado — será necessário um aditivo ou novo contrato. Você pode prosseguir, mas regularize em seguida.
+                              </p>
+                            )}
+                            {isLast && (
+                              <p className="text-amber-500 text-[11px] font-semibold flex items-center gap-1">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                Última medição prevista no contrato. Considere criar um aditivo antes.
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })()}
+
                       {/* Grade de veículos */}
                       {veiculos.length > 0 && (
                         <div>
@@ -442,6 +539,43 @@ export default function FaturaFormModal({ onClose, onSaved }) {
                 </Field>
               </div>
 
+              {/* ── Validação de período ── */}
+              {contrato && (periodoCheckLoading ? (
+                <div className="flex items-center gap-2 text-g-600 text-xs py-1">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Verificando período…
+                </div>
+              ) : periodoCheck?.bloqueado ? (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/8 border border-red-500/30">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-red-400 text-sm font-semibold">Período já faturado</p>
+                    <p className="text-red-400/70 text-xs mt-0.5">
+                      Todos os veículos deste contrato já possuem 30 dias faturados em{' '}
+                      <span className="font-bold">{MONTHS_BR[mesSel - 1]}/{anoSel}</span>.
+                      Selecione outro mês ou cancele.
+                    </p>
+                  </div>
+                </div>
+              ) : periodoCheck?.por_veiculo?.some(v => v.trabalhado > 0) ? (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-g-850 border border-g-700">
+                  <AlertCircle className="w-4 h-4 text-g-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-g-200 text-sm font-semibold">Período parcialmente faturado</p>
+                    <p className="text-g-500 text-xs mt-0.5 mb-2">
+                      Alguns veículos já têm dias lançados neste mês. Será gerada uma fatura complementar apenas com os dias restantes.
+                    </p>
+                    <div className="grid grid-cols-3 gap-1">
+                      {periodoCheck.por_veiculo.filter(v => v.trabalhado > 0).map(v => (
+                        <div key={v.id_veiculo} className="text-[10px] px-2 py-1 rounded bg-g-800 border border-g-700">
+                          <span className="font-bold text-g-300">{v.placa}</span>
+                          <span className="text-g-600 ml-1">{v.trabalhado}d → resta {v.dias_restantes}d</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null)}
+
               {/* Forma de pagamento + Status + Nº Fatura */}
               <div className="grid grid-cols-3 gap-4">
                 <Field label="Forma de Pagamento" required>
@@ -469,6 +603,42 @@ export default function FaturaFormModal({ onClose, onSaved }) {
                   />
                 </Field>
               </div>
+
+              {/* ── Campos exclusivos de Boleto ── */}
+              {formaPgto === 'Boleto' && (
+                <div className="flex flex-col gap-3 p-4 bg-g-900 border border-g-800 rounded-xl">
+                  <p className="text-g-500 text-[10px] uppercase tracking-wider font-semibold">Encargos por Atraso — Boleto</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Field label="% Multa" hint="Aplicada no 1º dia de atraso.">
+                      <input
+                        type="number" min="0" max="100" step="0.01"
+                        value={multaPct}
+                        onChange={e => setMultaPct(e.target.value)}
+                        placeholder="Ex: 2,00"
+                        className={`${inputCls} font-mono`}
+                      />
+                    </Field>
+                    <Field label="% Juros ao Mês" hint="Juros moratórios mensais.">
+                      <input
+                        type="number" min="0" max="100" step="0.0001"
+                        value={jurosPct}
+                        onChange={e => setJurosPct(e.target.value)}
+                        placeholder="Ex: 1,00"
+                        className={`${inputCls} font-mono`}
+                      />
+                    </Field>
+                    <Field label="Dias para Protesto" hint="Dias de atraso para envio a cartório.">
+                      <input
+                        type="number" min="1" step="1"
+                        value={diasProtesto}
+                        onChange={e => setDiasProtesto(e.target.value)}
+                        placeholder="Ex: 30"
+                        className={`${inputCls} font-mono`}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              )}
 
               {/* Card resumo do contexto */}
               <div className="p-4 bg-g-900 border border-g-800 rounded-xl flex items-center gap-4">

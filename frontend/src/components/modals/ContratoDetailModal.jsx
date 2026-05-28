@@ -1,10 +1,11 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  X, Loader2, FileText, Truck, Receipt, Edit2, Calendar, TrendingUp,
+  X, Loader2, FileText, Truck, Receipt, Edit2, Calendar, TrendingUp, FilePlus2,
 } from 'lucide-react'
 import { getContratoVeiculos, getContratoFaturas, getContratoMetricas } from '../../utils/api'
 import { brl, dateBR } from '../../utils/format'
+import AditivoContratoModal from './AditivoContratoModal'
 
 const STATUS_CLS = {
   Ativo:     'bg-emerald-500/10 text-emerald-700 border-emerald-700/30',
@@ -32,11 +33,13 @@ function DaysChip({ days }) {
 
 export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
   const backdropRef = useRef(null)
-  const [tab,      setTab]      = useState('Veículos')
-  const [veiculos, setVeiculos] = useState([])
-  const [metricas, setMetricas] = useState(null)
-  const [faturas,  setFaturas]  = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const [tab,         setTab]         = useState('Veículos')
+  const [veiculos,    setVeiculos]    = useState([])
+  const [metricas,    setMetricas]    = useState(null)
+  const [faturas,     setFaturas]     = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [modalAditivo, setModalAditivo] = useState(false)
+  const [contratoAtual, setContratoAtual] = useState(contrato)
 
   useEffect(() => {
     setLoading(true)
@@ -106,8 +109,15 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => onEdit(contrato)} className="p-2 rounded-lg text-g-600 hover:text-g-300 hover:bg-g-850 transition-colors" title="Editar">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setModalAditivo(true)}
+                title="Aditivar contrato"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
+              >
+                <FilePlus2 className="w-3.5 h-3.5" /> Aditivo
+              </button>
+              <button onClick={() => onEdit(contratoAtual)} className="p-2 rounded-lg text-g-600 hover:text-g-300 hover:bg-g-850 transition-colors" title="Editar">
                 <Edit2 className="w-4 h-4" />
               </button>
               <button onClick={onClose} className="p-2 rounded-lg text-g-600 hover:text-g-300 hover:bg-g-850 transition-colors">
@@ -341,5 +351,28 @@ export default function ContratoDetailModal({ contrato, onClose, onEdit }) {
     </div>
   )
 
-  return createPortal(modal, document.body)
+  return (
+    <>
+      {createPortal(modal, document.body)}
+      {modalAditivo && (
+        <AditivoContratoModal
+          contrato={contratoAtual}
+          onClose={() => setModalAditivo(false)}
+          onSaved={updated => {
+            if (updated) setContratoAtual(updated)
+            setModalAditivo(false)
+            // Reload veículos/metricas
+            setLoading(true)
+            Promise.allSettled([
+              getContratoVeiculos(contratoAtual.id),
+              getContratoMetricas(contratoAtual.id),
+            ]).then(([rv, rm]) => {
+              setVeiculos(rv.status === 'fulfilled' ? (rv.value || []) : [])
+              setMetricas(rm.status === 'fulfilled' ? (rm.value || null) : null)
+            }).finally(() => setLoading(false))
+          }}
+        />
+      )}
+    </>
+  )
 }

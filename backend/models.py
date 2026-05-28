@@ -267,6 +267,11 @@ class FaturamentoMensal(Base):
     data_pgto_imposto  = Column(Date)
     encargo_imposto    = Column(Numeric(14, 2))   # mora/juros quando pago em atraso
 
+    # ── Encargos de boleto em atraso ─────────────────────────────────────────
+    multa_pct     = Column(Numeric(6, 2))   # % multa por atraso (copiado do contrato)
+    juros_pct     = Column(Numeric(6, 4))   # % juros ao mês (copiado do contrato)
+    dias_protesto = Column(Integer)          # dias para envio a cartório
+
     locadora  = relationship("Empresa")
     contrato  = relationship("Contrato")
     cliente   = relationship("Cliente")

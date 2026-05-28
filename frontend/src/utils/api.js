@@ -43,6 +43,7 @@ export const pagarReembolso         = (id, payload)         => api.post(`/db/ree
 // ── Faturamento Mensal ───────────────────────────────────────────────
 export const getFaturamento         = (params = {})         => api.get('/db/faturamento', { params }).then(r => r.data)
 export const getFaturamentoSummary  = (params = {})         => api.get('/db/faturamento/summary', { params }).then(r => r.data)
+export const checkPeriodoFatura     = (contrato_id, mes)    => api.get('/db/faturamento/check-periodo', { params: { contrato_id, mes } }).then(r => r.data)
 export const getFaturamentoPrefill  = (contrato_id, mes)    => api.get('/db/faturamento/prefill', { params: { contrato_id, mes } }).then(r => r.data)
 export const getProximoNumeroFatura = (empresa_id)          => api.get('/db/faturamento/proximo-numero', { params: { empresa_id } }).then(r => r.data)
 export const criarFatura            = (payload)             => api.post('/db/faturamento', payload).then(r => r.data)
@@ -63,7 +64,8 @@ export const syncVeiculosContrato      = (id, payload)              => api.put(`
 export const removerVeiculoContrato    = (id, id_veiculo)           => api.delete(`/db/contratos/${id}/veiculos/${id_veiculo}`)
 export const getContratoFaturas        = (id)                       => api.get(`/db/contratos/${id}/faturas`).then(r => r.data)
 export const getContratoMetricas       = (id)                       => api.get(`/db/contratos/${id}/metricas-veiculos`).then(r => r.data)
-export const getFrotaDisponivel        = ()                         => api.get('/db/contratos/frota-disponivel').then(r => r.data)
+export const getFrotaDisponivel        = (contrato_id)              => api.get('/db/contratos/frota-disponivel', { params: contrato_id ? { contrato_id } : {} }).then(r => r.data)
+export const criarAditivo              = (id, payload)              => api.post(`/db/contratos/${id}/aditivo`, payload).then(r => r.data)
 export const getClientes               = ()                         => api.get('/db/clientes').then(r => r.data)
 
 // ── Débitos Veiculares ───────────────────────────────────────────────
@@ -96,6 +98,9 @@ export const patchVeiculoSeguro    = (sv_id, payload)    => api.patch(`/db/segur
 export const removerVeiculoSeguro  = (sv_id)             => api.delete(`/db/seguro/veiculo/${sv_id}`)
 export const getCorretores         = ()                  => api.get('/db/corretores').then(r => r.data)
 export const criarCorretor         = (payload)           => api.post('/db/corretores', payload).then(r => r.data)
+
+// ── Notificações ─────────────────────────────────────────────────────
+export const getNotifications = (empresa) => api.get('/db/notifications', { params: empresa ? { empresa } : {} }).then(r => r.data)
 
 // ── Banco SQLite — CRUD legado (manutenções) ─────────────────────────
 export const dbListFrota           = ()                    => api.get('/db/frota').then(r => r.data)

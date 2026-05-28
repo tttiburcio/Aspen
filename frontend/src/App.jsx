@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Toaster } from 'react-hot-toast'
-import { getYears, getKpis, getMonthly, getVehicles, getRegions, runSync } from './utils/api'
+import { getYears, getKpis, getMonthly, getVehicles, getRegions, runSync, getNotifications } from './utils/api'
 import OverviewPage      from './pages/OverviewPage'
 import VehiclesPage      from './pages/VehiclesPage'
 import MaintenancePage   from './pages/MaintenancePage'
@@ -11,7 +11,8 @@ import FaturamentoPage   from './pages/FaturamentoPage'
 import ContratosPage     from './pages/ContratosPage'
 import DebitsPage        from './pages/DebitsPage'
 import RastreamentoPage  from './pages/RastreamentoPage'
-import SeguroPage        from './pages/SeguroPage'
+import SeguroPage           from './pages/SeguroPage'
+import NotificationsPanel, { NotificationBadge } from './components/NotificationsPanel'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { CompanyProvider, useCompanies, GRUPO } from './contexts/CompanyContext'
 import { EnumsProvider } from './contexts/EnumsContext'
@@ -282,6 +283,21 @@ function AppContent() {
   const [debitsTab,      setDebitsTab]      = useState('documentais')
   const [debitsKey,      setDebitsKey]      = useState(0)
 
+  // ── Notificações ──
+  const [notifOpen,  setNotifOpen]  = useState(false)
+  const [notifData,  setNotifData]  = useState(null)
+  const bellRef = useRef(null)
+
+  const loadNotifications = useCallback(() => {
+    getNotifications(empresa).then(setNotifData).catch(() => {})
+  }, [empresa])
+
+  useEffect(() => {
+    loadNotifications()
+    const id = setInterval(loadNotifications, 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [loadNotifications])
+
   useEffect(() => {
     const timer = setTimeout(() => setIsSlowConnection(true), 3000)
     getYears()
@@ -428,10 +444,32 @@ function AppContent() {
 
             <div className="w-px h-5 bg-gray-200 mx-0.5" />
 
-            <button title="Notificações"
-              className="p-2 rounded-xl border border-gray-200 bg-white text-gray-400 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-all shadow-sm">
-              <Bell className="w-4 h-4" />
-            </button>
+            <div className="relative">
+              <button
+                ref={bellRef}
+                title="Notificações"
+                onClick={() => setNotifOpen(v => !v)}
+                className={`p-2 rounded-xl border transition-all shadow-sm ${
+                  notifOpen
+                    ? 'border-gray-300 bg-gray-100 text-gray-700'
+                    : 'border-gray-200 bg-white text-gray-400 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <Bell className="w-4 h-4" />
+              </button>
+              <NotificationBadge
+                count={(notifData?.criticas || 0) + (notifData?.urgentes || 0) + (notifData?.alertas || 0)}
+                prioridade={notifData?.criticas > 0 ? 'critica' : notifData?.urgentes > 0 ? 'urgente' : 'alerta'}
+              />
+            </div>
+
+            {notifOpen && (
+              <NotificationsPanel
+                empresa={empresa}
+                anchorRef={bellRef}
+                onClose={() => setNotifOpen(false)}
+              />
+            )}
 
             <button onClick={handleRefresh} disabled={loading} title="Atualizar dados"
               className="p-2 rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:border-gray-300 hover:bg-gray-50 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed active:scale-95">
@@ -520,7 +558,7 @@ function AppContent() {
 
           {!loading && page === 'faturamento' && (
             <div key={`faturamento-${year}-${empresa}`} className="animate-page-fade">
-              <FaturamentoPage year={year} onFaturaSaved={() => loadData(year, region, empresa)} />
+              <FaturamentoPage year={year} onFaturaSaved={() => { loadData(year, region, empresa); loadNotifications() }} />
             </div>
           )}
 

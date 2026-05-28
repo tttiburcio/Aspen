@@ -161,6 +161,19 @@ class VeiculoLink(BaseModel):
     valor_mensal: Optional[float] = None
 
 
+class VeiculoAditivoItem(BaseModel):
+    id_veiculo:   int
+    valor_mensal: Optional[float] = None
+
+
+class AditivoPayload(BaseModel):
+    nova_data_fim: date
+    reajuste_pct:  Optional[float]              = None   # % global, ex: 10.5 → +10,5%
+    veiculos:      Optional[List[VeiculoAditivoItem]] = None  # valores individuais finais
+    adicionar:     Optional[List[VeiculoLink]]  = None
+    remover:       Optional[List[int]]          = None   # lista de id_veiculo
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────
 
 @router.get("/api/db/contratos/frota-disponivel")
@@ -520,6 +533,66 @@ def remover_veiculo(contrato_id: int, id_veiculo: int, db: Session = Depends(get
         raise HTTPException(404, "Vínculo não encontrado")
     db.delete(link)
     db.commit()
+
+
+@router.post("/api/db/contratos/{contrato_id}/aditivo")
+def criar_aditivo(contrato_id: int, payload: AditivoPayload, db: Session = Depends(get_db)):
+    """Adita o contrato: estende prazo, aplica reajuste, adiciona/remove veículos."""
+    contrato = db.get(models.Contrato, contrato_id)
+    if not contrato:
+        raise HTTPException(404, "Contrato não encontrado")
+
+    # 1. Novo prazo
+    contrato.data_fim = payload.nova_data_fim
+    contrato.medicoes_total = _calc_medicoes(contrato.data_inicio, contrato.data_fim)
+    contrato.status_contrato = "Ativo"
+
+    # 2. Atualizar valores dos veículos
+    links = (
+        db.query(models.ContratoVeiculo)
+        .filter(models.ContratoVeiculo.contrato_id == contrato_id)
+        .all()
+    )
+    if payload.veiculos:
+        valor_map = {v.id_veiculo: v.valor_mensal for v in payload.veiculos if v.valor_mensal is not None}
+        for lk in links:
+            if lk.id_veiculo in valor_map:
+                lk.valor_mensal = valor_map[lk.id_veiculo]
+    elif payload.reajuste_pct is not None and payload.reajuste_pct != 0:
+        factor = 1 + payload.reajuste_pct / 100
+        for lk in links:
+            if lk.valor_mensal:
+                lk.valor_mensal = round(float(lk.valor_mensal) * factor, 2)
+
+    # 3. Remover veículos
+    if payload.remover:
+        db.query(models.ContratoVeiculo).filter(
+            models.ContratoVeiculo.contrato_id == contrato_id,
+            models.ContratoVeiculo.id_veiculo.in_(payload.remover),
+        ).delete(synchronize_session=False)
+
+    # 4. Adicionar veículos
+    if payload.adicionar:
+        max_seq = db.query(sf.max(models.ContratoVeiculo.sequencia)).filter(
+            models.ContratoVeiculo.contrato_id == contrato_id
+        ).scalar() or 0
+        for i, v in enumerate(payload.adicionar):
+            already = db.query(models.ContratoVeiculo).filter(
+                models.ContratoVeiculo.contrato_id == contrato_id,
+                models.ContratoVeiculo.id_veiculo  == v.id_veiculo,
+            ).first()
+            if not already:
+                db.add(models.ContratoVeiculo(
+                    contrato_id  = contrato_id,
+                    id_veiculo   = v.id_veiculo,
+                    sequencia    = v.sequencia or (max_seq + i + 1),
+                    valor_mensal = v.valor_mensal,
+                ))
+
+    db.commit()
+    db.refresh(contrato)
+    emp_map, placas_map = _build_maps(db, [contrato])
+    return _enrich(contrato, emp_map, placas_map)
 
 
 @router.get("/api/db/clientes")

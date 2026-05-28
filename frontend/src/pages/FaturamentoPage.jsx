@@ -163,7 +163,7 @@ export default function FaturamentoPage({ year, onFaturaSaved }) {
           await deletarFatura(r.id)
           toast.success('Fatura excluída')
           setConfirm(null)
-          load()
+          load(true)
         } catch (e) {
           toast.error(e.response?.data?.detail || 'Erro ao excluir')
         } finally {
@@ -185,7 +185,7 @@ export default function FaturamentoPage({ year, onFaturaSaved }) {
           await patchFatura(r.id, { status_recebimento: 'Cancelado' })
           toast.success('Fatura cancelada')
           setConfirm(null)
-          load()
+          load(true)
         } catch (e) {
           toast.error(e.response?.data?.detail || 'Erro ao cancelar')
         } finally {

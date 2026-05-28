@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from config import CORS_ORIGINS, APP_TITLE, APP_VERSION
 from database import init_db
 from services.os_helpers import _enrich_km_from_mapws
-from routers import analytics, maintenance, orders, invoices, fleet, sync, companies, reembolsos, contratos, faturamento, debitos, rastreamento, seguro
+from routers import analytics, maintenance, orders, invoices, fleet, sync, companies, reembolsos, contratos, faturamento, debitos, rastreamento, seguro, notifications
 import asyncio
 import logging
 
@@ -74,3 +74,4 @@ app.include_router(faturamento.router)
 app.include_router(debitos.router)
 app.include_router(rastreamento.router)
 app.include_router(seguro.router)
+app.include_router(notifications.router)

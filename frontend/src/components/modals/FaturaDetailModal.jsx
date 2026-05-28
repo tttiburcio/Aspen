@@ -88,6 +88,25 @@ export default function FaturaDetailModal({ faturaId, onClose, onSynced }) {
   const totalDiarias = data?.por_veiculo?.reduce((s, v) => s + (v.trabalhado || 0), 0) ?? 0
   const totalMedido  = data?.por_veiculo?.reduce((s, v) => s + (v.medicao   || 0), 0) ?? 0
 
+  // ── Encargos de boleto ──
+  const temEncargos = data?.forma_pagamento === 'Boleto' &&
+    (data?.multa_pct != null || data?.juros_pct != null || data?.dias_protesto != null)
+
+  const encargo = (() => {
+    if (!data || !data.vencimento) return null
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+    const venc = new Date(data.vencimento + 'T00:00:00')
+    const diasAtraso = Math.floor((hoje - venc) / 86400000)
+    if (diasAtraso <= 0) return null   // ainda não venceu
+    const base = data.valor_locacoes || 0
+    const valMulta = data.multa_pct  ? base * data.multa_pct / 100 : 0
+    const jurosDia = data.juros_pct  ? data.juros_pct / 30 / 100 : 0
+    const valJuros = base * jurosDia * diasAtraso
+    const valAtualizado = base + valMulta + valJuros
+    const diasParaProtesto = data.dias_protesto != null ? data.dias_protesto - diasAtraso : null
+    return { diasAtraso, valMulta, valJuros, valAtualizado, diasParaProtesto }
+  })()
+
   return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in p-4"
@@ -185,6 +204,79 @@ export default function FaturaDetailModal({ faturaId, onClose, onSynced }) {
                 />
               </div>
             </div>
+
+            {/* ── Painel de encargos de boleto ── */}
+            {(temEncargos || encargo) && (
+              <div className="px-6 pt-4 pb-5 border-b border-g-800">
+                <p className="text-g-600 text-[10px] uppercase tracking-widest font-semibold mb-3">
+                  {encargo ? 'Encargos por Atraso' : 'Condições de Boleto'}
+                </p>
+
+                {/* Condições configuradas — só quando existem */}
+                {temEncargos && (
+                  <div className="flex flex-wrap gap-3 mb-3">
+                    {data.multa_pct != null && (
+                      <div className="px-3 py-2 rounded-lg bg-g-900 border border-g-800 text-xs">
+                        <span className="text-g-600">Multa: </span>
+                        <span className="text-g-200 font-bold font-mono">{data.multa_pct}%</span>
+                      </div>
+                    )}
+                    {data.juros_pct != null && (
+                      <div className="px-3 py-2 rounded-lg bg-g-900 border border-g-800 text-xs">
+                        <span className="text-g-600">Juros: </span>
+                        <span className="text-g-200 font-bold font-mono">{data.juros_pct}% a.m.</span>
+                      </div>
+                    )}
+                    {data.dias_protesto != null && (
+                      <div className="px-3 py-2 rounded-lg bg-g-900 border border-g-800 text-xs">
+                        <span className="text-g-600">Protesto: </span>
+                        <span className="text-g-200 font-bold font-mono">{data.dias_protesto}d</span>
+                        <span className="text-g-600"> após vencimento</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Cálculo — só quando vencida */}
+                {encargo && (
+                  <div className="rounded-xl border border-g-700 bg-g-900 overflow-hidden">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-g-800">
+                      <div className="p-3 flex flex-col gap-0.5">
+                        <p className="text-g-600 text-[10px] uppercase tracking-wider font-semibold">Dias em atraso</p>
+                        <p className="text-g-100 font-bold text-lg tabular-nums">{encargo.diasAtraso}d</p>
+                      </div>
+                      <div className="p-3 flex flex-col gap-0.5">
+                        <p className="text-g-600 text-[10px] uppercase tracking-wider font-semibold">Multa</p>
+                        <p className="text-g-300 font-mono font-bold text-sm tabular-nums">
+                          {data.multa_pct != null ? `+ ${brl(encargo.valMulta)}` : '—'}
+                        </p>
+                      </div>
+                      <div className="p-3 flex flex-col gap-0.5">
+                        <p className="text-g-600 text-[10px] uppercase tracking-wider font-semibold">Juros</p>
+                        <p className="text-g-300 font-mono font-bold text-sm tabular-nums">
+                          {data.juros_pct != null ? `+ ${brl(encargo.valJuros)}` : '—'}
+                        </p>
+                      </div>
+                      <div className="p-3 flex flex-col gap-0.5 bg-g-850">
+                        <p className="text-g-500 text-[10px] uppercase tracking-wider font-semibold">Total a receber</p>
+                        <p className="text-g-50 font-mono font-bold text-base tabular-nums">{brl(encargo.valAtualizado)}</p>
+                        <p className="text-g-600 text-[10px]">orig. {brl(data.valor_locacoes)}</p>
+                      </div>
+                    </div>
+                    {encargo.diasParaProtesto != null && (
+                      <div className={`px-4 py-2.5 border-t border-g-800 flex items-center gap-2 text-xs font-semibold ${
+                        encargo.diasParaProtesto <= 0 ? 'text-red-400' : 'text-g-400'
+                      }`}>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {encargo.diasParaProtesto <= 0
+                          ? `Prazo de protesto atingido há ${Math.abs(encargo.diasParaProtesto)} dia(s) — enviar a cartório`
+                          : `Protesto em ${encargo.diasParaProtesto} dia(s) (após ${data.dias_protesto}d de atraso)`}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── Detalhamento por veículo ── */}
             <div className="px-6 pt-5 pb-4 border-b border-g-800">

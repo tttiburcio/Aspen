@@ -54,7 +54,7 @@ def _build_query(db: Session, year, empresa_sigla, status_recebimento, status_im
     return q
 
 
-def _enrich(row: models.FaturamentoMensal, emp_map: dict, ct_map: dict) -> dict:
+def _enrich(row: models.FaturamentoMensal, emp_map: dict, ct_map: dict, numero_medicao: int | None = None) -> dict:
     from datetime import date as _date
     emissao = row.emissao
     status_rec = row.status_recebimento or 'Pendente'
@@ -86,6 +86,11 @@ def _enrich(row: models.FaturamentoMensal, emp_map: dict, ct_map: dict) -> dict:
         "data_pgto_imposto":  str(row.data_pgto_imposto)  if row.data_pgto_imposto  else None,
         "encargo_imposto":    float(row.encargo_imposto)  if row.encargo_imposto   else 0.0,
         "forma_pagamento":    row.forma_pagamento or None,
+        # ── Encargos de boleto ───────────────────────────────────────
+        "multa_pct":          float(row.multa_pct)     if row.multa_pct     else None,
+        "juros_pct":          float(row.juros_pct)     if row.juros_pct     else None,
+        "dias_protesto":      row.dias_protesto        if row.dias_protesto else None,
+        "numero_medicao":     numero_medicao,
     }
 
 
@@ -116,7 +121,16 @@ def list_faturamento(
         for c in db.query(models.Contrato).filter(models.Contrato.id.in_(ct_ids)).all():
             ct_map[c.id] = {"nome_cliente": c.nome_cliente, "cidade": c.cidade_operacao}
 
-    return [_enrich(r, emp_map, ct_map) for r in rows]
+    # Número sequencial de medição por contrato (ordenado por id)
+    from collections import defaultdict
+    contrato_counters: dict = defaultdict(int)
+    medicao_map: dict = {}
+    for r in sorted(rows, key=lambda r: (r.id_contrato or 0, r.id)):
+        if r.id_contrato:
+            contrato_counters[r.id_contrato] += 1
+            medicao_map[r.id] = contrato_counters[r.id_contrato]
+
+    return [_enrich(r, emp_map, ct_map, medicao_map.get(r.id)) for r in rows]
 
 
 @router.get("/api/db/faturamento/summary")
@@ -245,6 +259,9 @@ class FaturaCreate(BaseModel):
     encargo_imposto:    Optional[float] = None
     forma_pagamento:    Optional[str]   = None
     observacoes:        Optional[str]   = None
+    multa_pct:          Optional[float] = None
+    juros_pct:          Optional[float] = None
+    dias_protesto:      Optional[int]   = None
     por_veiculo:        Optional[List[FatVeiculoItem]] = None
 
 
@@ -263,6 +280,75 @@ class FaturaUpdate(BaseModel):
     encargo_imposto:    Optional[float] = None
     forma_pagamento:    Optional[str]   = None
     por_veiculo:        Optional[List[FatVeiculoItem]] = None
+
+
+@router.get("/api/db/faturamento/check-periodo")
+def check_periodo_fatura(
+    contrato_id: int,
+    mes: str,   # "YYYY-MM"
+    db: Session = Depends(get_db),
+):
+    """
+    Verifica dias já faturados por veículo para o contrato+mês.
+    Retorna:
+      bloqueado: True se todos os veículos já têm 30 dias faturados
+      por_veiculo: [{id_veiculo, placa, trabalhado, dias_restantes}]
+      faturas_ids: ids das faturas existentes para o período
+    """
+    links = db.execute(
+        text("SELECT id_veiculo FROM contrato_veiculo WHERE contrato_id = :cid ORDER BY sequencia"),
+        {"cid": contrato_id},
+    ).fetchall()
+    if not links:
+        return {"bloqueado": False, "por_veiculo": [], "faturas_ids": []}
+
+    ids_veiculo = [r[0] for r in links]
+
+    # Faturas existentes para este contrato neste mês
+    fat_ids_rows = db.execute(
+        text("SELECT id FROM faturamento_mensal WHERE id_contrato = :cid AND strftime('%Y-%m', emissao) = :m"),
+        {"cid": contrato_id, "m": mes},
+    ).fetchall()
+    fat_ids = [r[0] for r in fat_ids_rows]
+
+    # Dias já faturados por veículo (soma de trabalhado no fat_unitario dessas faturas)
+    dias_map: dict[int, int] = {}
+    if fat_ids:
+        placeholders = ",".join(str(i) for i in fat_ids)
+        rows = db.execute(
+            text(f"""
+                SELECT id_veiculo, COALESCE(SUM(trabalhado), 0)
+                FROM fat_unitario
+                WHERE id_fatura IN ({placeholders})
+                GROUP BY id_veiculo
+            """),
+        ).fetchall()
+        dias_map = {r[0]: int(r[1]) for r in rows}
+
+    # Frota map para placas
+    frota_map = {
+        v.id: v for v in db.query(models.Frota).filter(models.Frota.id.in_(ids_veiculo)).all()
+    }
+
+    por_veiculo = []
+    for vid in ids_veiculo:
+        trabalhado = dias_map.get(vid, 0)
+        restante   = max(0, 30 - trabalhado)
+        frota      = frota_map.get(vid)
+        por_veiculo.append({
+            "id_veiculo":     vid,
+            "placa":          frota.placa  if frota else None,
+            "modelo":         frota.modelo if frota else None,
+            "trabalhado":     trabalhado,
+            "dias_restantes": restante,
+        })
+
+    bloqueado = all(v["dias_restantes"] == 0 for v in por_veiculo)
+    return {
+        "bloqueado":   bloqueado,
+        "faturas_ids": fat_ids,
+        "por_veiculo": por_veiculo,
+    }
 
 
 @router.get("/api/db/faturamento/prefill")
@@ -379,6 +465,9 @@ def criar_fatura(
         data_pgto_imposto  = payload.data_pgto_imposto,
         encargo_imposto    = payload.encargo_imposto,
         forma_pagamento    = payload.forma_pagamento,
+        multa_pct          = payload.multa_pct,
+        juros_pct          = payload.juros_pct,
+        dias_protesto      = payload.dias_protesto,
     )
     db.add(row)
     db.commit()
@@ -436,16 +525,33 @@ def detail_fatura(fatura_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Fatura não encontrada")
 
     emp_map, ct_map = {}, {}
+    contrato_obj = None
     if row.id_empresa:
         e = db.get(models.Empresa, row.id_empresa)
         if e:
             emp_map[e.id] = {"sigla": e.sigla or e.nome, "nome": e.nome}
     if row.id_contrato:
-        c = db.get(models.Contrato, row.id_contrato)
-        if c:
-            ct_map[c.id] = {"nome_cliente": c.nome_cliente, "cidade": c.cidade_operacao}
+        contrato_obj = db.get(models.Contrato, row.id_contrato)
+        if contrato_obj:
+            ct_map[contrato_obj.id] = {"nome_cliente": contrato_obj.nome_cliente, "cidade": contrato_obj.cidade_operacao}
 
-    fatura_data = _enrich(row, emp_map, ct_map)
+    num_medicao = None
+    if row.id_contrato:
+        num_medicao = db.execute(
+            text("SELECT COUNT(*) FROM faturamento_mensal WHERE id_contrato = :cid AND id <= :fid"),
+            {"cid": row.id_contrato, "fid": fatura_id},
+        ).scalar()
+
+    fatura_data = _enrich(row, emp_map, ct_map, num_medicao)
+
+    # Fallback: faturas antigas não têm encargos salvos — herda do contrato atual
+    if contrato_obj and fatura_data["multa_pct"] is None and fatura_data["juros_pct"] is None and fatura_data["dias_protesto"] is None:
+        if contrato_obj.multa_pct is not None:
+            fatura_data["multa_pct"] = float(contrato_obj.multa_pct)
+        if contrato_obj.juros_pct is not None:
+            fatura_data["juros_pct"] = float(contrato_obj.juros_pct)
+        if contrato_obj.dias_protesto is not None:
+            fatura_data["dias_protesto"] = contrato_obj.dias_protesto
 
     # Tenta carregar breakdown real (registrado ao criar a fatura)
     try:
@@ -564,10 +670,33 @@ def deletar_fatura(fatura_id: int, db: Session = Depends(get_db)):
     if not row:
         raise HTTPException(404, "Fatura não encontrada")
     ano = row.emissao.year if row.emissao else None
+
+    # Deleta linhas vinculadas à fatura
     db.execute(
         text("DELETE FROM fat_unitario WHERE id_fatura = :fid"),
         {"fid": fatura_id},
     )
+
+    # Também limpa linhas órfãs (id_fatura IS NULL) para os mesmos veículos/mês
+    # — geradas por sincronizações do Excel antes da integração automática
+    if row.id_contrato and row.emissao:
+        mes_str = str(row.emissao.replace(day=1))
+        veic_rows = db.execute(
+            text("SELECT id_veiculo FROM contrato_veiculo WHERE contrato_id = :cid"),
+            {"cid": row.id_contrato},
+        ).fetchall()
+        if veic_rows:
+            vids = ",".join(str(r[0]) for r in veic_rows)
+            db.execute(
+                text(
+                    f"DELETE FROM fat_unitario"
+                    f" WHERE id_veiculo IN ({vids})"
+                    f"   AND mes = :mes"
+                    f"   AND id_fatura IS NULL"
+                ),
+                {"mes": mes_str},
+            )
+
     db.delete(row)
     db.commit()
     if ano:
