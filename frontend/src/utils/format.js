@@ -17,7 +17,7 @@ export function brlShort(v) {
 }
 
 export function pct(v, decimals = 1) {
-  if (v == null || isNaN(v)) return '0%'
+  if (v == null || isNaN(v)) return '—'
   return `${Number(v).toFixed(decimals)}%`
 }
 

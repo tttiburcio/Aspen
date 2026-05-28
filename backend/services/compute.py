@@ -596,3 +596,15 @@ def _compute_cached(year: int, empresa: str = None):
         if key not in _compute_cache:
             _compute_cache[key] = result
         return _compute_cache[key]
+
+
+def invalidate_cache(year: int = None):
+    """Remove entradas do cache para o ano informado (ou todo o cache se year=None).
+    Deve ser chamado sempre que fat_unitario for modificado em runtime."""
+    with _compute_lock:
+        if year is None:
+            _compute_cache.clear()
+        else:
+            keys_to_remove = [k for k in _compute_cache if k[0] == year]
+            for k in keys_to_remove:
+                del _compute_cache[k]

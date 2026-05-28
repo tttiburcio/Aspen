@@ -236,6 +236,7 @@ class FatUnitario(Base):
     medicao     = Column(Numeric(14, 2))
     trabalhado  = Column(Integer)
     parado      = Column(Integer)
+    id_fatura   = Column(Integer, nullable=True)
 
 
 # ─────────────────────────────────────────────

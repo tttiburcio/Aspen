@@ -520,7 +520,7 @@ function AppContent() {
 
           {!loading && page === 'faturamento' && (
             <div key={`faturamento-${year}-${empresa}`} className="animate-page-fade">
-              <FaturamentoPage year={year} />
+              <FaturamentoPage year={year} onFaturaSaved={() => loadData(year, region, empresa)} />
             </div>
           )}
 

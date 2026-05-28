@@ -239,6 +239,9 @@ export default function FaturaFormModal({ onClose, onSaved }) {
         status_imposto:     statusImp,
         forma_pagamento:    formaPgto || null,
         observacoes:        observacoes || null,
+        por_veiculo:        veiculoRows
+          .filter(r => r.subtotal > 0)
+          .map(r => ({ id_veiculo: r.id_veiculo, subtotal: r.subtotal, qtd_dias: r.qtd_dias || 30 })),
       })
       toast.success('Fatura cadastrada com sucesso')
       onSaved?.()

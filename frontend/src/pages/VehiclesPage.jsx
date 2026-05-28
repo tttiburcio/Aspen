@@ -280,7 +280,7 @@ export default function VehiclesPage({
             <button key={o.val} onClick={() => handleShowOnly(o.val)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide transition-all ${
                 showOnly === o.val
-                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-sm'
+                  ? 'bg-gray-500/10 text-gray-600 border border-gray-500/10 shadow-sm'
                   : 'text-g-500 hover:text-g-200'
               }`}>
               {o.label}
@@ -397,12 +397,12 @@ export default function VehiclesPage({
                       </td>
 
                       {/* Receita */}
-                      <td className="td whitespace-nowrap text-left font-bold text-g-100 tabular-nums">
+                      <td className="td whitespace-nowrap text-left text-emerald-800 tabular-nums">
                         {brl(v.receita_total)}
                       </td>
 
                       {/* Custo */}
-                      <td className="td whitespace-nowrap text-left text-g-200 tabular-nums">
+                      <td className="td whitespace-nowrap text-left text-purple-800 tabular-nums">
                         {brl(v.custo_total)}
                       </td>
 
@@ -415,7 +415,7 @@ export default function VehiclesPage({
 
                       {/* % Margem */}
                       <td className="td whitespace-nowrap text-left font-bold tabular-nums">
-                        <span className={v.margem_pct >= 0 ? 'text-emerald-800' : 'text-red-500'}>
+                        <span className={v.margem_pct == null ? 'text-g-600' : v.margem_pct >= 0 ? 'text-emerald-800' : 'text-red-500'}>
                           {pct(v.margem_pct)}
                         </span>
                       </td>

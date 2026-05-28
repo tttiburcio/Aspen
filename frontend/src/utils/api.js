@@ -48,6 +48,8 @@ export const getProximoNumeroFatura = (empresa_id)          => api.get('/db/fatu
 export const criarFatura            = (payload)             => api.post('/db/faturamento', payload).then(r => r.data)
 export const patchFatura            = (id, payload)         => api.patch(`/db/faturamento/${id}`, payload).then(r => r.data)
 export const deletarFatura          = (id)                   => api.delete(`/db/faturamento/${id}`)
+export const syncFaturaFat          = (id)                   => api.post(`/db/faturamento/${id}/sync-fat`).then(r => r.data)
+export const getFaturaDetail        = (id)                   => api.get(`/db/faturamento/${id}/detail`).then(r => r.data)
 
 // ── Contratos ─────────────────────────────────────────────────────────
 export const getContratos              = (params = {})              => api.get('/db/contratos', { params }).then(r => r.data)
