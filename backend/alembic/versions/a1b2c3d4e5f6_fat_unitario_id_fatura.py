@@ -16,7 +16,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('fat_unitario', sa.Column('id_fatura', sa.Integer(), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing = [c['name'] for c in inspector.get_columns('fat_unitario')]
+    if 'id_fatura' not in existing:
+        op.add_column('fat_unitario', sa.Column('id_fatura', sa.Integer(), nullable=True))
 
 
 def downgrade() -> None:
