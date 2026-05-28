@@ -17,6 +17,17 @@ const MAPWS_BASE = 'http://localhost:5174'
 
 const EXCEPTIONS_STATUS = new Set(['VENDIDO', 'ADMINISTRAÇÃO', 'ADMINISTRACAO', 'ADM', 'DESATIVADO'])
 
+const TIPAGENS_CAMINHAO = new Set([
+  'cavalo mecânico', 'truck', 'toco', 'bitruck', 'semi-reboque', 'caminhão',
+])
+
+function getCategoriaVeiculo(tipagem) {
+  const t = (tipagem || '').toLowerCase()
+  if ([...TIPAGENS_CAMINHAO].some(k => t.includes(k))) return 'caminhao'
+  if (t.includes('picape') || t.includes('suv')) return 'caminhonete'
+  return 'outro'
+}
+
 // ─── Status badge ──────────────────────────────────────────────────────────
 const STATUS_CLS = {
   'FROTA':        'text-emerald-600 bg-emerald-300/15 border-emerald-600/30',
@@ -79,6 +90,7 @@ export default function VehiclesPage({
   const [sortDir,       setSortDir]       = useState('desc')
   const [filterStatus,  setFilterStatus]  = useState('')
   const [filterImplemento, setFilterImplemento] = useState('')
+  const [filterCategoria, setFilterCategoria] = useState('all')
   const [showOnly, setShowOnly] = useState(() => {
     try { return trackerFilter || localStorage.getItem('vehicles_filter') || 'all' } catch { return 'all' }
   })
@@ -118,7 +130,12 @@ export default function VehiclesPage({
         displayStatus = sVal
       }
 
-      return { ...v, status: displayStatus, _km_mes: getVehicleKm(v.placa)?.km ?? null }
+      return {
+        ...v,
+        status:    displayStatus,
+        _km_mes:   getVehicleKm(v.placa)?.km ?? null,
+        categoria: getCategoriaVeiculo(v.tipagem),
+      }
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vehicles, trackerUsage, isTkj],
@@ -139,6 +156,7 @@ export default function VehiclesPage({
     }
     if (filterStatus)     list = list.filter(v => v.status === filterStatus)
     if (filterImplemento) list = list.filter(v => v.implemento === filterImplemento)
+    if (filterCategoria !== 'all') list = list.filter(v => v.categoria === filterCategoria)
     if (showOnly === 'profit')     list = list.filter(v => v.margem >= 0)
     if (showOnly === 'loss')       list = list.filter(v => v.margem < 0)
     if (showOnly === 'high_usage') list = list.filter(v => highUsagePlacas.has(normalizePlaca(v.placa)))
@@ -153,7 +171,7 @@ export default function VehiclesPage({
       return sortDir === 'asc' ? av - bv : bv - av
     })
     return list
-  }, [vehiclesEnriched, search, sortCol, sortDir, filterStatus, filterImplemento, showOnly, highUsagePlacas, idlePlacas])
+  }, [vehiclesEnriched, search, sortCol, sortDir, filterStatus, filterImplemento, filterCategoria, showOnly, highUsagePlacas, idlePlacas])
 
   const handleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -167,6 +185,23 @@ export default function VehiclesPage({
       {label}{sortCol === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
     </th>
   )
+
+  // Rows with category dividers when showing all categories
+  const rowsWithDividers = useMemo(() => {
+    if (filterCategoria !== 'all') return filtered.map(v => ({ type: 'row', v }))
+    const caminhoes    = filtered.filter(v => v.categoria === 'caminhao')
+    const caminhonetes = filtered.filter(v => v.categoria !== 'caminhao')
+    const result = []
+    if (caminhoes.length > 0) {
+      result.push({ type: 'divider', label: 'Caminhões & Carretas', count: caminhoes.length })
+      caminhoes.forEach(v => result.push({ type: 'row', v }))
+    }
+    if (caminhonetes.length > 0) {
+      result.push({ type: 'divider', label: 'Caminhonetes & SUVs', count: caminhonetes.length })
+      caminhonetes.forEach(v => result.push({ type: 'row', v }))
+    }
+    return result
+  }, [filtered, filterCategoria])
 
   const totals = useMemo(() => ({
     receita_total:      filtered.reduce((s, v) => s + v.receita_total,      0),
@@ -184,10 +219,11 @@ export default function VehiclesPage({
     if (onRegionChange) onRegionChange(null)
     setFilterStatus('')
     setFilterImplemento('')
+    setFilterCategoria('all')
     handleShowOnly('all')
   }
 
-  const hasActiveFilter = !!(region || filterStatus || filterImplemento || search || showOnly !== 'all')
+  const hasActiveFilter = !!(region || filterStatus || filterImplemento || search || showOnly !== 'all' || filterCategoria !== 'all')
 
   return (
     <div className="flex flex-col gap-6">
@@ -269,6 +305,24 @@ export default function VehiclesPage({
             {implementos.map(imp => <option key={imp} value={imp}>{imp}</option>)}
           </select>
         )}
+
+        {/* Categoria de veículo */}
+        <div className="flex items-center gap-1 bg-g-900 border border-g-800 rounded-lg p-0.5">
+          {[
+            { val: 'all',          label: 'Todos'         },
+            { val: 'caminhao',     label: 'Caminhões'     },
+            { val: 'caminhonete',  label: 'Caminhonetes'  },
+          ].map(o => (
+            <button key={o.val} onClick={() => setFilterCategoria(o.val)}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide transition-all ${
+                filterCategoria === o.val
+                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm'
+                  : 'text-g-500 hover:text-g-200'
+              }`}>
+              {o.label}
+            </button>
+          ))}
+        </div>
 
         {/* Resultado financeiro */}
         <div className="flex items-center gap-1 bg-g-900 border border-g-800 rounded-lg p-0.5">
@@ -365,7 +419,15 @@ export default function VehiclesPage({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(v => {
+                {rowsWithDividers.map((item, idx) => {
+                  if (item.type === 'divider') return (
+                    <tr key={`div-${idx}`}>
+                      <td colSpan={13} className="px-4 py-1.5 bg-g-900/80 border-b border-g-800 text-[10px] font-bold uppercase tracking-widest text-g-500 select-none">
+                        {item.label} <span className="text-g-700 font-normal">· {item.count}</span>
+                      </td>
+                    </tr>
+                  )
+                  const v = item.v
                   const vkm = getVehicleKm(v.placa)
                   const isIdle   = idlePlacas.has(normalizePlaca(v.placa))
                   const isHigh   = vkm?.kmDia > HIGH_USAGE_THRESHOLD

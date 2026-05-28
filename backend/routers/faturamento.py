@@ -180,26 +180,29 @@ def summary_faturamento(
     por_veiculo = []
     fatura_ids = [r.id for r in rows if r.id]
     if fatura_ids:
-        placeholders = ",".join(str(fid) for fid in fatura_ids)
-        vrows = db.execute(text(f"""
-            SELECT fu.id_veiculo, fr.placa, fr.modelo,
-                   SUM(fu.medicao) as total,
-                   GROUP_CONCAT(DISTINCT fu.id_fatura) as fids
-            FROM fat_unitario fu
-            LEFT JOIN frota fr ON fr.id = fu.id_veiculo
-            WHERE fu.id_fatura IN ({placeholders})
-            GROUP BY fu.id_veiculo
-            ORDER BY total DESC
-        """)).fetchall()
-        for rv in vrows:
-            fids_parsed = [int(x) for x in (rv[4] or "").split(",") if x.strip()]
-            por_veiculo.append({
-                "id_veiculo": rv[0],
-                "placa":      rv[1] or "—",
-                "modelo":     rv[2] or "—",
-                "total":      round(float(rv[3] or 0), 2),
-                "fatura_ids": fids_parsed,
-            })
+        try:
+            placeholders = ",".join(str(fid) for fid in fatura_ids)
+            vrows = db.execute(text(f"""
+                SELECT fu.id_veiculo, fr.placa, fr.modelo,
+                       SUM(fu.medicao) as total,
+                       GROUP_CONCAT(DISTINCT fu.id_fatura) as fids
+                FROM fat_unitario fu
+                LEFT JOIN frota fr ON fr.id = fu.id_veiculo
+                WHERE fu.id_fatura IN ({placeholders})
+                GROUP BY fu.id_veiculo
+                ORDER BY total DESC
+            """)).fetchall()
+            for rv in vrows:
+                fids_parsed = [int(x) for x in (rv[4] or "").split(",") if x.strip()]
+                por_veiculo.append({
+                    "id_veiculo": rv[0],
+                    "placa":      rv[1] or "—",
+                    "modelo":     rv[2] or "—",
+                    "total":      round(float(rv[3] or 0), 2),
+                    "fatura_ids": fids_parsed,
+                })
+        except Exception:
+            pass
 
     return {
         "total_locacoes":      round(total_loc, 2),
@@ -445,17 +448,20 @@ def detail_fatura(fatura_id: int, db: Session = Depends(get_db)):
     fatura_data = _enrich(row, emp_map, ct_map)
 
     # Tenta carregar breakdown real (registrado ao criar a fatura)
-    fat_rows = db.execute(
-        text("""
-            SELECT fu.id_veiculo, fu.medicao, fu.trabalhado, fu.parado,
-                   f.placa, f.marca, f.modelo, f.implemento
-            FROM fat_unitario fu
-            LEFT JOIN frota f ON f.id = fu.id_veiculo
-            WHERE fu.id_fatura = :fid
-            ORDER BY f.placa
-        """),
-        {"fid": fatura_id},
-    ).fetchall()
+    try:
+        fat_rows = db.execute(
+            text("""
+                SELECT fu.id_veiculo, fu.medicao, fu.trabalhado, fu.parado,
+                       f.placa, f.marca, f.modelo, f.implemento
+                FROM fat_unitario fu
+                LEFT JOIN frota f ON f.id = fu.id_veiculo
+                WHERE fu.id_fatura = :fid
+                ORDER BY f.placa
+            """),
+            {"fid": fatura_id},
+        ).fetchall()
+    except Exception:
+        fat_rows = []
 
     if fat_rows:
         por_veiculo = [
