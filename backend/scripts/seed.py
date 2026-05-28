@@ -745,8 +745,6 @@ def seed_os_abertas(db, empresas, veiculos):
             implemento      = v.implemento,
             tipo_manutencao = random.choice(["Preventiva", "Corretiva"]),
             categoria       = "Serviço",
-            sistema         = sistema,
-            servico         = servico,
             fornecedor      = fornecedor,
             km              = random.randint(50_000, 400_000),
             data_entrada    = entrada,
